@@ -36,3 +36,43 @@
     transform: rotate(360deg);
   }
 }
+
+.animate-glitch {
+  animation: glitch-skew 1s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-skew {
+  0% {
+    transform: skew(3deg, 1deg);
+  }
+  50% {
+    transform: skew(-2deg, -5deg);
+  }
+  100% {
+    transform: skew(-1deg, 2deg);
+  }
+}
+
+.App {
+  font-family: monospace;
+  text-align: center;
+}
+
+.glitch-bg {
+  background: repeating-linear-gradient(
+    black,
+    #111 1px,
+    black 2px
+  );
+  animation: glitch 1.5s infinite;
+}
+
+@keyframes glitch {
+  0%, 100% { filter: none; }
+  50% { filter: hue-rotate(5deg) contrast(1.2); }
+}
+
+.hover\:glitch-button:hover {
+  box-shadow: 0 0 10px white;
+  transform: scale(1.05);
+}
