@@ -1,0 +1,16 @@
+{
+  "id": "warrior_slash_uuid",
+  "name": "Warrior Slash",
+  "description": "A basic melee attack.",
+  "class_id": "warrior_class_uuid",
+  "level_unlock": 1,
+  "type": "active",
+  "energy_cost": 10,
+  "cooldown": 0,
+  "effect_json": {
+    "type": "damage",
+    "value": 20,
+    "target": "enemy"
+  },
+  "icon": "slash_icon.png"
+}
