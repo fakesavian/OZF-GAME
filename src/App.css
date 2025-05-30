@@ -1,0 +1,78 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-glitch {
+  animation: glitch-skew 1s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-skew {
+  0% {
+    transform: skew(3deg, 1deg);
+  }
+  50% {
+    transform: skew(-2deg, -5deg);
+  }
+  100% {
+    transform: skew(-1deg, 2deg);
+  }
+}
+
+.App {
+  font-family: monospace;
+  text-align: center;
+}
+
+.glitch-bg {
+  background: repeating-linear-gradient(
+    black,
+    #111 1px,
+    black 2px
+  );
+  animation: glitch 1.5s infinite;
+}
+
+@keyframes glitch {
+  0%, 100% { filter: none; }
+  50% { filter: hue-rotate(5deg) contrast(1.2); }
+}
+
+.hover\:glitch-button:hover {
+  box-shadow: 0 0 10px white;
+  transform: scale(1.05);
+}
