@@ -57,9 +57,11 @@ export interface Effect {
   target: 'self' | 'enemy'; // Required for strict type safety
 }
 
+export type StatusEffectType = 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
+
 export interface StatusEffect {
   id: string; // Unique ID for the status effect instance
-  type: string; // e.g., 'stun', 'burn', 'poison'
+  type: StatusEffectType; // e.g., 'stun', 'burn', 'poison'
   duration: number; // Turns remaining
   sourceAbilityId: string; // The ability that applied this effect
   appliedAtTurn: number;

@@ -30,6 +30,7 @@ export interface EffectJson {
   value?: number; // Amount of damage/heal
   duration?: number; // For status effects
   target: 'self' | 'enemy'; // Required for strict type safety
+  stat?: string; // For buffs (e.g., 'defense', 'attack')
   // Add more specific effect properties as needed
 }
 
@@ -42,7 +43,11 @@ export interface Ability {
   type: 'active' | 'passive' | 'ultimate' | null;
   energy_cost: number | null;
   cooldown: number | null;
-  effect_json: EffectJson | null; // JSONB
+  effects: EffectJson[]; // Array of effects
+  effect_json?: { // Added based on feedback
+    type?: string;    // e.g., 'damage', 'shield'
+    value?: number;   // for sorting or comparing
+  };
   icon: string | null;
 }
 
