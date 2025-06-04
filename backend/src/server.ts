@@ -1,6 +1,7 @@
 import express from 'express';
 import http from 'http';
 import WebSocket from 'ws';
+import cors from 'cors';
 
 const app = express();
 const server = http.createServer(app);
@@ -18,16 +19,36 @@ import turnRouter from './api/turn';
 import { createMatchState } from './utils/matchStateStore'; // Import createMatchState
 
 app.use(express.json());
+app.use(cors({
+  origin: 'http://localhost:3001', // frontend
+  credentials: true, // if using cookies
+}));
 
 // In-memory storage for active matches (for MVP, will be replaced by Redis/DB for scaling)
 const activeMatches: Map<string, { matchState: MatchState; players: { [playerId: string]: WebSocket } }> = new Map();
 
-app.get('/', (req, res) => {
-  res.send('OZF Game Backend is running!');
+app.get('/', (_req, res) => {
+  res.send('Backend is up!');
 });
 
 app.use('/api/match', matchRouter);
 app.use('/api/match', turnRouter); // Mount the turn router
+
+// Mock endpoint for frontend testing
+app.post("/api/match/:matchId/turn", (req, res) => {
+  const { matchId } = req.params;
+  const { move } = req.body;
+
+  console.log(`Match ${matchId} received move: ${move}`);
+
+  // Mock result:
+  res.json({
+    result: "ok",
+    enemyHP: 80,
+    playerHP: 100,
+    log: `You used ${move}.`,
+  });
+});
 
 // API to start a new match
 app.post('/api/match/start', async (req: express.Request, res: express.Response) => {
