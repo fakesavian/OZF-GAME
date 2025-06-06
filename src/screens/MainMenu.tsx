@@ -1,66 +1,60 @@
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 
-const MainMenu = () => {
+const MainMenuScreen = () => {
   const navigate = useNavigate();
-  const [hovered, setHovered] = useState<string | null>(null);
-
-  const menuItems = [
-    { label: "Battle Mode", action: () => navigate("/battle") },
-    { label: "Character", action: () => console.log("character") },
-    { label: "Inventory", action: () => console.log("inventory") },
-    { label: "Settings", action: () => console.log("settings") },
-  ];
 
   return (
-    <div
-      style={{
-        backgroundColor: "#000",
-        color: "#00ffcc",
-        fontFamily: "monospace",
-        height: "100vh",
-        padding: "2rem",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <pre style={{ fontSize: "1.5rem", marginBottom: "2rem" }}>
+    <div className="screen font-mono text-green-400 bg-black h-screen flex flex-col items-center justify-center space-y-4 p-4">
+      <div className="relative crt-scanline mb-8">
+        <pre className="crt-title text-green-400 text-xs leading-none text-center font-mono">
 {String.raw`
- ________  ________  ________  ___       ___     
-|\   __  \|\   __  \|\   ____\|\  \     |\  \    
-\ \  \|\  \ \  \|\  \ \  \___|\ \  \    \ \  \   
- \ \   ____\ \   __  \ \  \    \ \  \  __\ \  \  
-  \ \  \___|\ \  \ \  \ \  \____\ \  \|\__\_\  \ 
-   \ \__\    \ \__\ \__\ \_______\ \____________\
-    \|__|     \|__|\|__|\|_______|\|____________|
+ _____                                                _____
+( ___ )                                              ( ___ )
+ |   |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|   |
+ |   |     __    ___ _       ____    ________________ |   |
+ |   |    / /   /   | |     / / /   / ____/ ___/ ___/ |   |
+ |   |   / /   / /| | | /| / / /   / __/  \__ \\__ \  |   |
+ |   |  / /___/ ___ | |/ |/ / /___/ /___ ___/ /__/ /  |   |
+ |   | /_____/_/ _|_|__/|__/_____/_____//____/____/   |   |
+ |   |    / /   /   |  / | / / __ \/ ___/             |   |
+ |   |   / /   / /| | /  |/ / / / /\__ \              |   |
+ |   |  / /___/ ___ |/ /|  / /_/ /___/ /              |   |
+ |   | /_____/_/  |_/_/ |_/_____//____/               |   |
+ |___|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|___|
+(_____)                                              (_____)
 `}
-      </pre>
+        </pre>
+      </div>
 
-      <ul style={{ listStyle: "none", padding: 0, width: "100%", maxWidth: "400px" }}>
-        {menuItems.map((item, index) => (
-          <li
-            key={index}
-            onMouseEnter={() => setHovered(item.label)}
-            onMouseLeave={() => setHovered(null)}
-            onClick={item.action}
-            style={{
-              padding: "1rem",
-              margin: "0.5rem 0",
-              border: "1px solid #00ffcc",
-              backgroundColor: hovered === item.label ? "#003333" : "transparent",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              textAlign: "center",
-              fontWeight: hovered === item.label ? "bold" : "normal",
-            }}
-          >
-            ▶ {item.label}
-          </li>
-        ))}
-      </ul>
+      <button
+        onClick={() => navigate('/battle')}
+        className="border border-green-400 px-6 py-2 hover:bg-green-900 transition-all w-64 text-left"
+      >
+        ▶ Battle Mode
+      </button>
+
+      <button
+        onClick={() => navigate('/character')}
+        className="border border-green-400 px-6 py-2 hover:bg-green-900 transition-all w-64 text-left"
+      >
+        ▶ Character
+      </button>
+
+      <button
+        onClick={() => navigate('/inventory')}
+        className="border border-green-400 px-6 py-2 hover:bg-green-900 transition-all w-64 text-left"
+      >
+        ▶ Inventory
+      </button>
+
+      <button
+        onClick={() => navigate('/settings')}
+        className="border border-green-400 px-6 py-2 hover:bg-green-900 transition-all w-64 text-left"
+      >
+        ▶ Settings
+      </button>
     </div>
   );
 };
 
-export default MainMenu;
+export default MainMenuScreen;
