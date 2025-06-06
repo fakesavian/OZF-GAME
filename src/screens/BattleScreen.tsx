@@ -85,7 +85,7 @@ const abilities: Ability[] = [
   },
 ];
 
-const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
+const BattleScreen = () => {
   const navigate = useNavigate(); // New hook
   const controls = useAnimation();
   const wait = (duration: number) => {
