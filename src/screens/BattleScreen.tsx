@@ -426,7 +426,6 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
               : "Your signal fades into static. Try again, operative."}
           </p>
           <div className="mt-2 text-sm text-green-300">Returning to Main Menu...</div>
-          <div className="mt-2 text-sm text-green-300">Returning to Main Menu...</div>
         </motion.div>
       )}
 
