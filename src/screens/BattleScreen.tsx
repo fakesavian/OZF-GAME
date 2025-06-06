@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import AttackEffect from '../components/AttackEffect';
@@ -107,10 +107,25 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const [wasJustEnemyDamaged, setWasJustEnemyDamaged] = useState(false); // New state for enemy damage trigger
   const [cameraShake, setCameraShake] = useState(false);
   const [announcement, setAnnouncement] = useState<{ name: string; actor: 'player' | 'enemy' } | null>(null);
+  const timeoutsRef = useRef<number[]>([]);
+  const [sequence, setSequence] = useState(0);
+
+  const registerTimeout = (fn: () => void, delay: number) => {
+    const id = window.setTimeout(fn, delay);
+    timeoutsRef.current.push(id);
+    return id;
+  };
+
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(clearTimeout);
+      timeoutsRef.current = [];
+    };
+  }, [sequence]);
 
   const triggerCameraShake = () => {
     setCameraShake(true);
-    setTimeout(() => setCameraShake(false), 300);
+    registerTimeout(() => setCameraShake(false), 300);
   };
 
   const applyStatus = (
@@ -183,16 +198,17 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   };
 
   const runEnemyTurn = () => {
+    setSequence(s => s + 1);
     setIsAnimating(true); // Start animation
     const enemyMove = chooseEnemyAbility();
     setEnemyCooldowns(prev => ({ ...prev, [enemyMove.id]: enemyMove.cooldown || 0 }));
     setLog(prev => [...prev, `> Enemy used ${enemyMove.name}`]);
 
-    setTimeout(() => {
+    registerTimeout(() => {
       setAnnouncement({ name: enemyMove.name, actor: 'enemy' });
-      setTimeout(() => {
+      registerTimeout(() => {
         setAnnouncement(null);
-        setTimeout(() => { // Delay damage application
+        registerTimeout(() => { // Delay damage application
         // Check for stun on enemy
         const isEnemyStunned = enemyStatusEffects.some(effect => effect.type === 'stun');
         if (isEnemyStunned) {
@@ -261,10 +277,10 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             if (newPlayerHP <= 0) {
               setWinner("opponent"); // Set winner immediately
               setPlayerDefeated(true); // Trigger player defeat animation
-              setTimeout(() => {
+              registerTimeout(() => {
                 setShowSplash(true); // Show splash after player animation (1.2s)
               }, 1200);
-              setTimeout(() => {
+              registerTimeout(() => {
                 setShowSplash(false); // Hide splash
                 setBattleOver(true);  // Show EndBattleScreen
               }, 3200); // Total 1.2s (animation) + 2s (splash) = 3.2s
@@ -272,7 +288,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             return newPlayerHP;
           });
         }
-        setTimeout(() => setPlayerDamage(null), 1600); // Slower fade out for damage number
+        registerTimeout(() => setPlayerDamage(null), 1600); // Slower fade out for damage number
         setIsAnimating(false); // End animation
       }, 600); // Delay damage application
     }, 800); // Show announcement briefly
@@ -280,6 +296,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   };
 
   const handleAbilityUse = (ability: Ability) => {
+    setSequence(s => s + 1);
     setIsAnimating(true); // Start animation
     setLog(prev => [...prev, `> You used ${ability.name}`]);
 
@@ -305,7 +322,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
         });
         return updated;
       });
-      setTimeout(() => {
+      registerTimeout(() => {
         setIsAnimating(false);
         runEnemyTurn();
       }, 600);
@@ -330,9 +347,9 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     });
 
     setAnnouncement({ name: ability.name, actor: 'player' });
-    setTimeout(() => {
+    registerTimeout(() => {
       setAnnouncement(null);
-      setTimeout(() => { // Delay damage application
+      registerTimeout(() => { // Delay damage application
       const actualDamage = ability.damage;
       setEnemyHP(prev => {
         const newEnemyHP = Math.max(0, prev - actualDamage);
@@ -344,20 +361,20 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
           setWinner("player"); // Set winner immediately
           setEnemyDamage(null);
           setEnemyDefeated(true);
-          setTimeout(() => {
+          registerTimeout(() => {
             setShowSplash(true);
           }, 1200);
-          setTimeout(() => {
+          registerTimeout(() => {
             setShowSplash(false);
             setBattleOver(true);
           }, 3200);
         }
         return newEnemyHP;
       });
-      setTimeout(() => setEnemyDamage(null), 1600); // Slower fade out for damage number
+      registerTimeout(() => setEnemyDamage(null), 1600); // Slower fade out for damage number
 
       setIsAnimating(false); // End animation
-      setTimeout(() => {
+      registerTimeout(() => {
         runEnemyTurn();
       }, 600); // Delay for enemy turn after player attack animation
     }, 600); // Delay to allow animation (~600ms)
