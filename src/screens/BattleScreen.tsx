@@ -17,6 +17,7 @@ interface StatusEffect {
   duration: number; // in turns
   value?: number; // For damage, heal, shield, buff values
   stat?: string; // For buffs (e.g., 'defense', 'attack')
+  justApplied?: boolean; // Flag to skip duration tick on the turn it's applied
 }
 
 type Ability = {
@@ -115,9 +116,15 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     message: string
   ) => {
     if (target === 'player') {
-      setPlayerStatusEffects(prev => [...prev, effect]);
+      setPlayerStatusEffects(prev => [
+        ...prev,
+        { ...effect, justApplied: true },
+      ]);
     } else {
-      setEnemyStatusEffects(prev => [...prev, effect]);
+      setEnemyStatusEffects(prev => [
+        ...prev,
+        { ...effect, justApplied: true },
+      ]);
     }
     setLog(prev => [...prev, message]);
   };
@@ -187,8 +194,24 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
         const isEnemyStunned = enemyStatusEffects.some(effect => effect.type === 'stun');
         if (isEnemyStunned) {
           setLog(prev => [...prev, `> Enemy is stunned and cannot act!`]);
-          // Remove stun effect after turn
-          setEnemyStatusEffects(prev => prev.filter(effect => effect.type !== 'stun'));
+          // Reduce stun duration when enemy would act
+          setEnemyStatusEffects(prev => {
+            const updated: StatusEffect[] = [];
+            prev.forEach(effect => {
+              if (effect.type === 'stun') {
+                const next = { ...effect };
+                if (!next.justApplied) {
+                  next.duration -= 1;
+                }
+                if (next.duration > 0) {
+                  updated.push(next);
+                }
+              } else {
+                updated.push(effect);
+              }
+            });
+            return updated;
+          });
         } else {
           // Apply enemy ability effects
           enemyMove.effects?.forEach(effect => {
@@ -260,8 +283,24 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     const isPlayerStunned = playerStatusEffects.some(effect => effect.type === 'stun');
     if (isPlayerStunned) {
       setLog(prev => [...prev, `> You are stunned and cannot act!`]);
-      // Remove stun effect after turn
-      setPlayerStatusEffects(prev => prev.filter(effect => effect.type !== 'stun'));
+      // Reduce stun duration when player would act
+      setPlayerStatusEffects(prev => {
+        const updated: StatusEffect[] = [];
+        prev.forEach(effect => {
+          if (effect.type === 'stun') {
+            const next = { ...effect };
+            if (!next.justApplied) {
+              next.duration -= 1;
+            }
+            if (next.duration > 0) {
+              updated.push(next);
+            }
+          } else {
+            updated.push(effect);
+          }
+        });
+        return updated;
+      });
       setTimeout(() => {
         setIsAnimating(false);
         runEnemyTurn();
@@ -383,18 +422,32 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       characterName: string
     ) => {
       let newHP = currentHP;
-      const updatedEffects = currentEffects.filter(effect => {
-        if (effect.type === 'burn') {
-          const burnDamage = effect.value || 0;
+      const updatedEffects: StatusEffect[] = [];
+      currentEffects.forEach(effect => {
+        const updated = { ...effect };
+        if (updated.type === 'burn') {
+          const burnDamage = updated.value || 0;
           newHP -= burnDamage;
           setLog(prev => [...prev, `> ${characterName} takes ${burnDamage} burn damage.`]);
-        } else if (effect.type === 'poison') {
-          const poisonDamage = effect.value || 0;
+        } else if (updated.type === 'poison') {
+          const poisonDamage = updated.value || 0;
           newHP -= poisonDamage;
           setLog(prev => [...prev, `> ${characterName} suffers ${poisonDamage} poison damage.`]);
         }
-        effect.duration -= 1;
-        return effect.duration > 0;
+
+        if (updated.justApplied) {
+          updated.justApplied = false;
+          updatedEffects.push(updated);
+          return;
+        }
+
+        if (updated.type !== 'stun') {
+          updated.duration -= 1;
+        }
+
+        if (updated.duration > 0) {
+          updatedEffects.push(updated);
+        }
       });
       setHP(newHP);
       setEffects(updatedEffects);
