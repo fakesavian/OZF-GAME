@@ -56,8 +56,6 @@ export const runMatchTurn = (matchState: MatchState, turnAction: TurnAction): Ma
     actor.cooldowns[abilityId] = (ability.cooldown || 0);
 
     // Apply ability effects
-    // Apply ability effects
-    const effectsAppliedForLog: StatusEffect[] = []; // To collect effects for turn log
 
     if (ability.effects && ability.effects.length > 0) {
       ability.effects.forEach(effectJson => {
@@ -115,12 +113,7 @@ export const runMatchTurn = (matchState: MatchState, turnAction: TurnAction): Ma
   target = processStatusEffects(target);
 
   // Cooldown Ticker Per Turn
-  actor.cooldowns = Object.fromEntries(
-    Object.entries(actor.cooldowns).map(([key, val]) => [key, Math.max(0, val - 1)])
-  );
-  target.cooldowns = Object.fromEntries(
-    Object.entries(target.cooldowns).map(([key, val]) => [key, Math.max(0, val - 1)])
-  );
+  actor = decrementCooldowns(actor);
 
   // Update match state with new player states
   let updatedMatchState = {
