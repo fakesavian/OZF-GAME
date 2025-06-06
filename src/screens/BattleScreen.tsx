@@ -269,6 +269,7 @@ const BattleScreen = () => {
     await wait(1.6);
     setPlayerDamage(null); // Slower fade out for damage number
     setIsAnimating(false); // End animation
+    processTurnEnd();
   };
 
   const handleAbilityUse = async (ability: Ability) => {
@@ -425,10 +426,8 @@ const BattleScreen = () => {
     poison: "text-teal-400",
   };
 
-  // Process status effects at the end of each turn
-  useEffect(() => {
-    if (battleOver || isAnimating) return;
-
+  // Process status effects at the end of each round
+  const processTurnEnd = () => {
     const processEffects = (
       currentHP: number,
       currentEffects: StatusEffect[],
@@ -468,13 +467,9 @@ const BattleScreen = () => {
       setEffects(updatedEffects);
     };
 
-    // Process player effects
-    processEffects(playerHP, playerStatusEffects, setPlayerHP, setPlayerStatusEffects, "You");
-
-    // Process enemy effects
-    processEffects(enemyHP, enemyStatusEffects, setEnemyHP, setEnemyStatusEffects, "Enemy");
-
-  }, [isAnimating, battleOver]); // Trigger when animation ends (turn completes)
+    processEffects(playerHP, playerStatusEffects, setPlayerHP, setPlayerStatusEffects, 'You');
+    processEffects(enemyHP, enemyStatusEffects, setEnemyHP, setEnemyStatusEffects, 'Enemy');
+  };
 
   return (
     <div className={`screen font-mono text-green-400 bg-black min-h-screen p-4 relative flex flex-col justify-between ${cameraShake ? 'camera-shake' : ''}`}> 
