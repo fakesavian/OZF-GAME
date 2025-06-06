@@ -1,46 +1,84 @@
-# Getting Started with Create React App
+# OZF: The Lawless Lands
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+OZF is an RPG prototype featuring browser-based, turn-based combat. The project is split into two parts:
 
-## Available Scripts
+- **Front-end** – A React + TypeScript client located at the project root.
+- **Back-end** – An Express and WebSocket server inside the `backend/` folder.
 
-In the project directory, you can run:
+## Requirements
 
-### `npm start`
+- Node.js 18 or later
+- npm
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Front-end Setup
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+```bash
+# install dependencies
+npm install
 
-### `npm test`
+# start the development server
+npm start
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Build a production bundle with:
 
-### `npm run build`
+```bash
+npm run build
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Run the front-end unit tests using [Vitest](https://vitest.dev/):
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm test
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Available root scripts can be listed with `npm run`, but the main ones are:
 
-### `npm run eject`
+- `npm start` – start the React dev server
+- `npm run build` – create a production build
+- `npm test` / `npm run test:frontend` – run Vitest
+- `npm run eject` – eject Create React App (not reversible)
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Back-end Setup
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+cd backend
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+# install dependencies
+npm install
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+# start the TypeScript server in watch mode
+npm run dev
+```
 
-## Learn More
+You can also build and run the compiled server:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm run build
+npm start
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+To try the command line simulator, run:
+
+```bash
+npm run start:cli
+```
+
+Current back-end scripts are:
+
+- `npm run dev` – run the server with nodemon
+- `npm start` – run `ts-node` directly
+- `npm run build` – compile TypeScript to `dist`
+- `npm test` – (placeholder)
+- `npm run start:cli` – start a CLI match simulator
+
+## Running Tests
+
+All tests across the project are executed with Vitest. Run them from the project root:
+
+```bash
+npm test
+```
+
+Vitest will watch for changes and report results for both the front-end and back-end test files.
+
