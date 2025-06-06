@@ -33,7 +33,7 @@
 - Loads effects from JSON ability file
 - Applies effects through handlers:
 ```ts
-runEffect({ type: 'burn', duration: 2 }, source, target, state)
+runEffect({ type: 'burn', duration: 2 }, abilityId, source, target, state)
 ```
 
 ### `status_manager.ts`
