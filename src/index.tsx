@@ -6,6 +6,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ScreenLoaderProvider } from './context/ScreenLoaderContext'; // New import
 import { PlayerProvider } from './context/PlayerContext';
+import { EffectSequenceProvider } from './utils/EffectSequenceManager';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -15,7 +16,9 @@ root.render(
     <BrowserRouter>
       <PlayerProvider>
         <ScreenLoaderProvider>
-          <App />
+          <EffectSequenceProvider>
+            <App />
+          </EffectSequenceProvider>
         </ScreenLoaderProvider>
       </PlayerProvider>
     </BrowserRouter>

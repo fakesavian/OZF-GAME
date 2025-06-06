@@ -4,6 +4,7 @@ import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import AttackEffect from '../components/AttackEffect';
 import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
+import { useEffectSequenceManager, delay } from '../utils/EffectSequenceManager';
 
 type StatusEffectType =
   | 'burn'
@@ -107,6 +108,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const [wasJustEnemyDamaged, setWasJustEnemyDamaged] = useState(false); // New state for enemy damage trigger
   const [cameraShake, setCameraShake] = useState(false);
   const [announcement, setAnnouncement] = useState<{ name: string; actor: 'player' | 'enemy' } | null>(null);
+  const sequenceManager = useEffectSequenceManager();
 
   const triggerCameraShake = () => {
     setCameraShake(true);
@@ -183,143 +185,141 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   };
 
   const runEnemyTurn = () => {
-    setIsAnimating(true); // Start animation
+    setIsAnimating(true);
     const enemyMove = chooseEnemyAbility();
     setEnemyCooldowns(prev => ({ ...prev, [enemyMove.id]: enemyMove.cooldown || 0 }));
     setLog(prev => [...prev, `> Enemy used ${enemyMove.name}`]);
 
-    setTimeout(() => {
-      setAnnouncement({ name: enemyMove.name, actor: 'enemy' });
-      setTimeout(() => {
+    sequenceManager.start({
+      precast: async () => {
+        await delay(2000);
+        setAnnouncement({ name: enemyMove.name, actor: 'enemy' });
+        await delay(400);
         setAnnouncement(null);
-        setTimeout(() => { // Delay damage application
-        // Check for stun on enemy
+        await delay(600);
+      },
+      applyEffect: async () => {
         const isEnemyStunned = enemyStatusEffects.some(effect => effect.type === 'stun');
         if (isEnemyStunned) {
           setLog(prev => [...prev, `> Enemy is stunned and cannot act!`]);
-          // Reduce stun duration when enemy would act
           setEnemyStatusEffects(prev => {
             const updated: StatusEffect[] = [];
             prev.forEach(effect => {
               if (effect.type === 'stun') {
                 const next = { ...effect };
-                if (!next.justApplied) {
-                  next.duration -= 1;
-                }
-                if (next.duration > 0) {
-                  updated.push(next);
-                }
+                if (!next.justApplied) next.duration -= 1;
+                if (next.duration > 0) updated.push(next);
               } else {
                 updated.push(effect);
               }
             });
             return updated;
           });
-        } else {
-          // Apply enemy ability effects
-          enemyMove.effects?.forEach(effect => {
-            if (effect.type === 'shield') {
-              applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
-            } else if (effect.type === 'burn') {
-              applyStatus('player', effect, `> You are burned for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'stun') {
-              applyStatus('player', effect, `> You are stunned for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'buff') {
-              applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'debuff') {
-              applyStatus('player', effect, `> You suffer a debuff to ${effect.stat} for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'poison') {
-              applyStatus('player', effect, `> You are poisoned for ${effect.duration} turn(s).`);
-            }
-          });
-
-          // Apply damage, considering shield
-          let actualDamage = enemyMove.damage;
-          let shieldAbsorbed = 0;
-          setPlayerStatusEffects(prevEffects => {
-            const updatedEffects = [...prevEffects];
-            const shieldIndex = updatedEffects.findIndex(e => e.type === 'shield');
-            if (shieldIndex !== -1) {
-              const shieldEffect = updatedEffects[shieldIndex];
-              shieldAbsorbed = Math.min(actualDamage, shieldEffect.value || 0);
-              actualDamage = Math.max(0, actualDamage - shieldAbsorbed);
-              shieldEffect.value = (shieldEffect.value || 0) - shieldAbsorbed;
-              if ((shieldEffect.value || 0) <= 0) {
-                updatedEffects.splice(shieldIndex, 1); // Remove shield if fully consumed
-              }
-              setLog(prev => [...prev, `> Your shield absorbed ${shieldAbsorbed} damage!`]);
-            }
-            return updatedEffects;
-          });
-
-          setPlayerDamage(actualDamage);
-          setShowPlayerEffect(true);
-          setIsPlayerDamaged(true); // Trigger player hit animation
-          if (actualDamage >= 15) triggerCameraShake();
-          setPlayerHP(prev => {
-            const newPlayerHP = Math.max(0, prev - actualDamage);
-            if (newPlayerHP <= 0) {
-              setWinner("opponent"); // Set winner immediately
-              setPlayerDefeated(true); // Trigger player defeat animation
-              setTimeout(() => {
-                setShowSplash(true); // Show splash after player animation (1.2s)
-              }, 1200);
-              setTimeout(() => {
-                setShowSplash(false); // Hide splash
-                setBattleOver(true);  // Show EndBattleScreen
-              }, 3200); // Total 1.2s (animation) + 2s (splash) = 3.2s
-            }
-            return newPlayerHP;
-          });
+          return;
         }
-        setTimeout(() => setPlayerDamage(null), 1600); // Slower fade out for damage number
-        setIsAnimating(false); // End animation
-      }, 600); // Delay damage application
-    }, 800); // Show announcement briefly
-  }, 2000); // 2-second pause before enemy strikes
+
+        enemyMove.effects?.forEach(effect => {
+          if (effect.type === 'shield') {
+            applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
+          } else if (effect.type === 'burn') {
+            applyStatus('player', effect, `> You are burned for ${effect.duration} turn(s).`);
+          } else if (effect.type === 'stun') {
+            applyStatus('player', effect, `> You are stunned for ${effect.duration} turn(s).`);
+          } else if (effect.type === 'buff') {
+            applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
+          } else if (effect.type === 'debuff') {
+            applyStatus('player', effect, `> You suffer a debuff to ${effect.stat} for ${effect.duration} turn(s).`);
+          } else if (effect.type === 'poison') {
+            applyStatus('player', effect, `> You are poisoned for ${effect.duration} turn(s).`);
+          }
+        });
+
+        let actualDamage = enemyMove.damage;
+        let shieldAbsorbed = 0;
+        setPlayerStatusEffects(prevEffects => {
+          const updatedEffects = [...prevEffects];
+          const shieldIndex = updatedEffects.findIndex(e => e.type === 'shield');
+          if (shieldIndex !== -1) {
+            const shieldEffect = updatedEffects[shieldIndex];
+            shieldAbsorbed = Math.min(actualDamage, shieldEffect.value || 0);
+            actualDamage = Math.max(0, actualDamage - shieldAbsorbed);
+            shieldEffect.value = (shieldEffect.value || 0) - shieldAbsorbed;
+            if ((shieldEffect.value || 0) <= 0) {
+              updatedEffects.splice(shieldIndex, 1);
+            }
+            setLog(prev => [...prev, `> Your shield absorbed ${shieldAbsorbed} damage!`]);
+          }
+          return updatedEffects;
+        });
+
+        setPlayerDamage(actualDamage);
+        setShowPlayerEffect(true);
+        setIsPlayerDamaged(true);
+        if (actualDamage >= 15) triggerCameraShake();
+        setPlayerHP(prev => {
+          const newPlayerHP = Math.max(0, prev - actualDamage);
+          if (newPlayerHP <= 0) {
+            setWinner('opponent');
+            setPlayerDefeated(true);
+            setTimeout(() => {
+              setShowSplash(true);
+            }, 1200);
+            setTimeout(() => {
+              setShowSplash(false);
+              setBattleOver(true);
+            }, 3200);
+          }
+          return newPlayerHP;
+        });
+      },
+      cleanup: async () => {
+        await delay(1600);
+        setPlayerDamage(null);
+        setIsAnimating(false);
+      }
+    });
   };
 
   const handleAbilityUse = (ability: Ability) => {
-    setIsAnimating(true); // Start animation
+    setIsAnimating(true);
     setLog(prev => [...prev, `> You used ${ability.name}`]);
 
-    // Check for stun on player
     const isPlayerStunned = playerStatusEffects.some(effect => effect.type === 'stun');
     if (isPlayerStunned) {
       setLog(prev => [...prev, `> You are stunned and cannot act!`]);
-      // Reduce stun duration when player would act
       setPlayerStatusEffects(prev => {
         const updated: StatusEffect[] = [];
         prev.forEach(effect => {
           if (effect.type === 'stun') {
             const next = { ...effect };
-            if (!next.justApplied) {
-              next.duration -= 1;
-            }
-            if (next.duration > 0) {
-              updated.push(next);
-            }
+            if (!next.justApplied) next.duration -= 1;
+            if (next.duration > 0) updated.push(next);
           } else {
             updated.push(effect);
           }
         });
         return updated;
       });
-      setTimeout(() => {
-        setIsAnimating(false);
-        runEnemyTurn();
-      }, 600);
+      sequenceManager.start({
+        precast: async () => {
+          await delay(600);
+        },
+        applyEffect: async () => {},
+        cleanup: async () => {
+          setIsAnimating(false);
+          runEnemyTurn();
+        }
+      });
       return;
     }
 
-    // Apply player ability effects
     ability.effects?.forEach(effect => {
       if (effect.type === 'shield') {
         applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
       } else if (effect.type === 'burn') {
         applyStatus('enemy', effect, `> Enemy is burned for ${effect.duration} turn(s).`);
       } else if (effect.type === 'stun') {
-        applyStatus('enemy', effect, `> Enemy is stunned for ${effect.duration} turn(s).`);
+        applyStatus('enemy', effect, `> Enemy is stunned for ${effect.duration}turn(s).`);
       } else if (effect.type === 'buff') {
         applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
       } else if (effect.type === 'debuff') {
@@ -329,39 +329,46 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       }
     });
 
-    setAnnouncement({ name: ability.name, actor: 'player' });
-    setTimeout(() => {
-      setAnnouncement(null);
-      setTimeout(() => { // Delay damage application
-      const actualDamage = ability.damage;
-      setEnemyHP(prev => {
-        const newEnemyHP = Math.max(0, prev - actualDamage);
-        setEnemyDamage(actualDamage);
-        setShowEnemyEffect(true);
-        setWasJustEnemyDamaged(true); // Trigger enemy damage effect
-        if (actualDamage >= 15) triggerCameraShake();
-        if (newEnemyHP <= 0) {
-          setWinner("player"); // Set winner immediately
-          setEnemyDamage(null);
-          setEnemyDefeated(true);
-          setTimeout(() => {
-            setShowSplash(true);
-          }, 1200);
-          setTimeout(() => {
-            setShowSplash(false);
-            setBattleOver(true);
-          }, 3200);
-        }
-        return newEnemyHP;
-      });
-      setTimeout(() => setEnemyDamage(null), 1600); // Slower fade out for damage number
-
-      setIsAnimating(false); // End animation
-      setTimeout(() => {
+    sequenceManager.start({
+      precast: async () => {
+        setAnnouncement({ name: ability.name, actor: 'player' });
+        await delay(400);
+        setAnnouncement(null);
+        await delay(600);
+      },
+      applyEffect: async () => {
+        const actualDamage = ability.damage;
+        setEnemyHP(prev => {
+          const newEnemyHP = Math.max(0, prev - actualDamage);
+          setEnemyDamage(actualDamage);
+          setShowEnemyEffect(true);
+          setWasJustEnemyDamaged(true);
+          if (actualDamage >= 15) triggerCameraShake();
+          if (newEnemyHP <= 0) {
+            setWinner('player');
+            setEnemyDamage(null);
+            setEnemyDefeated(true);
+            setTimeout(() => {
+              setShowSplash(true);
+            }, 1200);
+            setTimeout(() => {
+              setShowSplash(false);
+              setBattleOver(true);
+            }, 3200);
+          }
+          return newEnemyHP;
+        });
+      },
+      react: async () => {
+        await delay(1600);
+        setEnemyDamage(null);
+      },
+      cleanup: async () => {
+        setIsAnimating(false);
+        await delay(600);
         runEnemyTurn();
-      }, 600); // Delay for enemy turn after player attack animation
-    }, 600); // Delay to allow animation (~600ms)
-    }, 400); // Announcement duration
+      }
+    });
   };
 
   useEffect(() => {
