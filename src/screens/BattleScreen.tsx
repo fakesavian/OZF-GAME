@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import AttackEffect from '../components/AttackEffect';
+import StatusEffectIcon from '../components/StatusEffectIcon';
 import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
 
@@ -545,8 +546,9 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             {playerStatusEffects.map((effect, i) => (
               <div
                 key={i}
-                className={`text-xs px-2 py-0.5 rounded bg-green-900 border border-green-400 font-mono glitch ${effectColors[effect.type]}`}
+                className={`flex items-center text-xs px-2 py-0.5 rounded bg-green-900 border border-green-400 font-mono glitch ${effectColors[effect.type]}`}
               >
+                <StatusEffectIcon type={effect.type} size={14} className="mr-1" />
                 {effect.type.toUpperCase()} ({effect.duration})
               </div>
             ))}
@@ -602,8 +604,9 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             {enemyStatusEffects.map((effect, i) => (
               <div
                 key={i}
-                className={`text-xs px-2 py-0.5 rounded bg-red-900 border border-red-400 font-mono glitch ${effectColors[effect.type]}`}
+                className={`flex items-center text-xs px-2 py-0.5 rounded bg-red-900 border border-red-400 font-mono glitch ${effectColors[effect.type]}`}
               >
+                <StatusEffectIcon type={effect.type} size={14} className="mr-1" />
                 {effect.type.toUpperCase()} ({effect.duration})
               </div>
             ))}
