@@ -2,6 +2,7 @@ import warriorAbilitiesData from '../../abilities/warrior.json';
 import mageAbilitiesData from '../../abilities/mage.json';
 import warriorSlashData from '../../abilities/warrior_slash.json';
 import mageFireballData from '../../abilities/mage_fireball.json';
+import acidSpitData from '../../abilities/acid_spit.json';
 import { Ability } from '../../types/db';
 
 const registry: Record<string, Ability> = {};
@@ -21,6 +22,7 @@ addAbilitiesToRegistry(warriorAbilitiesData);
 addAbilitiesToRegistry(mageAbilitiesData);
 addAbilitiesToRegistry({ [warriorSlashData.id]: warriorSlashData }); // Wrap single ability in an object
 addAbilitiesToRegistry({ [mageFireballData.id]: mageFireballData }); // Wrap single ability in an object
+addAbilitiesToRegistry(acidSpitData);
 
 export function getAbilityById(id: string): Ability | undefined {
   return registry[id];
