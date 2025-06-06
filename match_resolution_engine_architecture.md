@@ -41,6 +41,7 @@ runEffect({ type: 'burn', duration: 2 }, abilityId, source, target, state)
   - Buffs/debuffs
   - Immunities, shields, damage-over-time
 - Clears expired effects
+ - Triggers optional `onStartTurn`/`onEndTurn` callbacks on each status effect
 
 ### `validator.ts`
 - Verifies submitted turn legality:
@@ -80,7 +81,7 @@ runEffect({ type: 'burn', duration: 2 }, abilityId, source, target, state)
      ↓
 [effect_runner.ts]
      ↓
-[status_manager.ts] → updates effects
+[status_manager.ts] → updates effects and fires turn triggers
      ↓
 [combat_log.ts] → writes log
      ↓

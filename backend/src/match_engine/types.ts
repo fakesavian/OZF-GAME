@@ -73,6 +73,10 @@ export interface StatusEffect {
   appliedAtTurn: number;
   value?: number; // For damage, heal, shield, buff values
   stat?: string; // For buffs (e.g., 'defense', 'attack')
+  /** Callback triggered when the owning player starts their turn */
+  onStartTurn?: (player: PlayerState, effect: StatusEffect) => PlayerState;
+  /** Callback triggered when the owning player ends their turn */
+  onEndTurn?: (player: PlayerState, effect: StatusEffect) => PlayerState;
   [key: string]: any; // Allow other properties
   // Add more properties like potency, tickDamage, etc.
 }

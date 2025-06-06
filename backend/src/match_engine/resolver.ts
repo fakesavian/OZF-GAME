@@ -3,7 +3,7 @@ import { applyDamage, applyEnergyCost, updatePlayerState, decrementCooldowns, up
 import { addLogEntry } from './combat_log';
 import { Ability, EffectJson } from '../types/db'; // Import EffectJson
 import { getAbilityById } from './abilities'; // Import getAbilityById
-import { applyStatus, hasStatus, processStatusEffects, applyEffect } from './status_manager'; // Import status manager functions
+import { applyStatus, hasStatus, processStatusEffects, applyEffect, triggerStartTurn, triggerEndTurn } from './status_manager';
 import { BotModels } from './bot_ai/index'; // Import BotModels
 import { v4 as uuidv4 } from 'uuid'; // Import uuid for generating unique IDs
 
@@ -13,6 +13,9 @@ export const runMatchTurn = (matchState: MatchState, turnAction: TurnAction): Ma
   let target = matchState.playerA.profile.id === targetId ? matchState.playerA : matchState.playerB;
   let combatLog: CombatLogEntry[] = [];
   const effectsAppliedForLog: StatusEffect[] = []; // To collect effects for turn log
+
+  // Trigger start-of-turn effects for the acting player
+  actor = triggerStartTurn(actor);
 
   // If playerB is a bot, determine its action
   if (matchState.playerB.isBot && actor.profile.id === matchState.playerB.profile.id) {
@@ -113,6 +116,9 @@ export const runMatchTurn = (matchState: MatchState, turnAction: TurnAction): Ma
   // Process status effects for both players at the end of their turn
   actor = processStatusEffects(actor);
   target = processStatusEffects(target);
+
+  // Trigger end-of-turn effects for the acting player
+  actor = triggerEndTurn(actor);
 
   // Cooldown Ticker Per Turn
   actor.cooldowns = Object.fromEntries(

@@ -118,3 +118,23 @@ function consumeShield(effects: StatusEffect[], incomingDamage: number): StatusE
 
   return updated.filter((e) => e.type !== 'shield' || (e.value || 0) > 0);
 }
+
+export function triggerStartTurn(player: PlayerState): PlayerState {
+  let updated = { ...player };
+  for (const effect of player.statusEffects) {
+    if (typeof effect.onStartTurn === 'function') {
+      updated = effect.onStartTurn(updated, effect);
+    }
+  }
+  return updated;
+}
+
+export function triggerEndTurn(player: PlayerState): PlayerState {
+  let updated = { ...player };
+  for (const effect of player.statusEffects) {
+    if (typeof effect.onEndTurn === 'function') {
+      updated = effect.onEndTurn(updated, effect);
+    }
+  }
+  return updated;
+}
