@@ -11,6 +11,7 @@ import MenuScreen from "./screens/MainMenu";
 import BattleScreen from "./screens/BattleScreen";
 import InventoryScreen from "./screens/InventoryScreen";
 import CharacterScreen from "./screens/CharacterScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 import { useEffect, useState } from "react";
 
 // Wrapper for BattleScreen to handle navigation prop
@@ -33,6 +34,7 @@ function App() {
       <Route path="/menu" element={<MenuScreen />} />
       <Route path="/battle" element={<BattleScreenWrapper />} />
       <Route path="/inventory" element={<InventoryScreen />} />
+      <Route path="/settings" element={<SettingsScreen />} />
       <Route path="/character" element={<CharacterScreen />} />
       <Route path="*" element={<Navigate to={initialRoute} />} />
     </Routes>
