@@ -37,7 +37,7 @@ OZF is a cyberpunk turn-based RPG where players select characters and engage in 
 
 ### Phase 1: Project Setup and Core Structure
 
-1.  **Create a `frontend` directory**: This will house all the React application files.
+1.  **Ensure the React project resides in the `src` directory**.
 2.  **Initialize a React + TypeScript project**: Use `vite` for a quick setup.
 3.  **Install Tailwind CSS**: Configure Tailwind for styling.
 4.  **Install Lucide React icons**: Add the icon library.
@@ -57,15 +57,15 @@ OZF is a cyberpunk turn-based RPG where players select characters and engage in 
 
 ### Phase 3: View Development
 
-1.  **`src/views/SplashScreen.tsx`**:
+1.  **`src/screens/SplashScreen.tsx`**:
     *   Display the OZF logo (text-based with ASCII art style).
     *   Apply `GlitchText` component.
     *   On click, transition to the Main Menu.
-2.  **`src/views/MainMenu.tsx`**:
+2.  **`src/screens/MainMenu.tsx`**:
     *   Display the game title.
     *   Render buttons for "Battle", "Character", "Inventory", "Settings" using the `Button` component.
     *   Implement navigation logic for each button.
-3.  **`src/views/BattleScreen.tsx`**:
+3.  **`src/screens/BattleScreen.tsx`**:
     *   **HUD**:
         *   Player and Opponent character display (simple ASCII-style representations).
         *   Health bars for both players using `HealthBar` component.
@@ -98,10 +98,7 @@ OZF is a cyberpunk turn-based RPG where players select characters and engage in 
 
 ```mermaid
 graph TD
-    A[Start] --> B{Check for existing frontend};
-    B -- No --> C[Create frontend directory];
-    B -- Yes --> D[Proceed with existing frontend];
-    C --> E[Initialize React + TS with Vite];
+    A[Start] --> E[Initialize React + TS with Vite];
     E --> F[Install Tailwind CSS];
     F --> G[Install Lucide React];
     G --> H[Create index.html];
