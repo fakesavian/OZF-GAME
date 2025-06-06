@@ -4,6 +4,8 @@ import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import AttackEffect from '../components/AttackEffect';
 import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
+import { items, Item } from '../context/PlayerContext';
+import { runItemEffect, BattleState } from '../ItemEffectRunner';
 
 type StatusEffectType =
   | 'burn'
@@ -107,6 +109,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const [wasJustEnemyDamaged, setWasJustEnemyDamaged] = useState(false); // New state for enemy damage trigger
   const [cameraShake, setCameraShake] = useState(false);
   const [announcement, setAnnouncement] = useState<{ name: string; actor: 'player' | 'enemy' } | null>(null);
+  const [showInventory, setShowInventory] = useState(false);
 
   const triggerCameraShake = () => {
     setCameraShake(true);
@@ -364,6 +367,27 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     }, 400); // Announcement duration
   };
 
+  const handleItemUse = (item: Item) => {
+    setShowInventory(false);
+    setIsAnimating(true);
+    setLog(prev => [...prev, `> You used ${item.name}`]);
+    const { newState, logs } = runItemEffect(item, 'player', {
+      playerHP,
+      enemyHP,
+      playerStatusEffects,
+      enemyStatusEffects,
+    } as BattleState);
+    setPlayerHP(newState.playerHP);
+    setEnemyHP(newState.enemyHP);
+    setPlayerStatusEffects(newState.playerStatusEffects);
+    setEnemyStatusEffects(newState.enemyStatusEffects);
+    setLog(prev => [...prev, ...logs]);
+    setTimeout(() => {
+      setIsAnimating(false);
+      runEnemyTurn();
+    }, 600);
+  };
+
   useEffect(() => {
     if (wasJustPlayerDamaged) {
       setIsPlayerDamaged(true);
@@ -499,6 +523,29 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
         BATTLE SIMULATION
       </div>
 
+      {showInventory && (
+        <div className="absolute inset-0 bg-black bg-opacity-90 z-50 p-4 flex flex-col">
+          <div className="text-right mb-2">
+            <button onClick={() => setShowInventory(false)} className="text-red-400">✕</button>
+          </div>
+          <h2 className="text-center text-lg border-b border-green-400 pb-1 mb-2">INVENTORY</h2>
+          <div className="grid grid-cols-2 gap-2 overflow-y-auto">
+            {items.filter(i => i.type === 'Consumable').map((it, idx) => (
+              <div key={idx} className="border border-green-400 p-2 flex flex-col">
+                <span className="text-sm">{it.name}</span>
+                <span className="text-xs text-green-300">{it.description}</span>
+                <button
+                  onClick={() => handleItemUse(it)}
+                  className="mt-1 border border-green-400 px-2 py-1 hover:bg-green-900"
+                >
+                  Use
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Character Portraits & HP Bars */}
       <div className="flex justify-center items-center gap-8 mt-12">
 
@@ -618,11 +665,18 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             key={idx}
             onClick={() => handleAbilityUse(a)}
             className="border border-green-400 px-4 py-2 hover:bg-green-900"
-            disabled={isAnimating} // Disable buttons during animation
+            disabled={isAnimating}
           >
             ▶ {a.name}
           </button>
         ))}
+        <button
+          onClick={() => setShowInventory(true)}
+          className="border border-green-400 px-4 py-2 hover:bg-green-900"
+          disabled={isAnimating}
+        >
+          Inventory
+        </button>
       </div>
 
       {/* Action Log */}
