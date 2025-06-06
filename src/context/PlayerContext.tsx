@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import type { StatusEffect, StatusEffectType } from '../types/statusEffects';
 
 export interface Stats {
   hp: number;
@@ -8,14 +9,6 @@ export interface Stats {
   def: number;
 }
 
-export type StatusEffectType = 'burn' | 'stun' | 'shield' | 'buff' | 'debuff' | 'poison';
-
-export interface StatusEffect {
-  type: StatusEffectType;
-  duration: number;
-  value?: number;
-  stat?: string;
-}
 
 export interface Item {
   name: string;

@@ -6,22 +6,7 @@ import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
 import { items, Item } from '../context/PlayerContext';
 import { runItemEffect, BattleState } from '../ItemEffectRunner';
-
-type StatusEffectType =
-  | 'burn'
-  | 'stun'
-  | 'shield'
-  | 'buff'
-  | 'debuff'
-  | 'poison';
-
-interface StatusEffect {
-  type: StatusEffectType;
-  duration: number; // in turns
-  value?: number; // For damage, heal, shield, buff values
-  stat?: string; // For buffs (e.g., 'defense', 'attack')
-  justApplied?: boolean; // Flag to skip duration tick on the turn it's applied
-}
+import type { StatusEffect, StatusEffectType } from '../types/statusEffects';
 
 type Ability = {
   name: string;
