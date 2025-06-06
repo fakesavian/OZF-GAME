@@ -1,12 +1,17 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { test, expect } from 'vitest';
+import '@testing-library/jest-dom';
 import App from './App';
 
-test('renders splash screen with OZF Game title', () => {
-  render(<App />);
-  const ozfElement = screen.getByText(/ozf game/i);
-  expect(ozfElement).toBeInTheDocument();
+test('renders boot sequence first line', async () => {
+  render(
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  );
 
-  const clickToEnter = screen.getByText(/click to enter/i);
-  expect(clickToEnter).toBeInTheDocument();
+  const line = await screen.findByText(/INITIATING OZF SYSTEM/i);
+  expect(line).toBeInTheDocument();
 });

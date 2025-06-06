@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
 
@@ -90,6 +91,13 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const [isEnemyDamaged, setIsEnemyDamaged] = useState(false); // New state for enemy hit animation
   const [wasJustPlayerDamaged, setWasJustPlayerDamaged] = useState(false); // New state for player damage trigger
   const [wasJustEnemyDamaged, setWasJustEnemyDamaged] = useState(false); // New state for enemy damage trigger
+  const [cameraShake, setCameraShake] = useState(false);
+  const [announcement, setAnnouncement] = useState<{ name: string; actor: 'player' | 'enemy' } | null>(null);
+
+  const triggerCameraShake = () => {
+    setCameraShake(true);
+    setTimeout(() => setCameraShake(false), 300);
+  };
 
   const enemyAbilities: Ability[] = [ // Explicitly type enemyAbilities
     {
@@ -122,8 +130,11 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     const enemyMove = enemyAbilities[Math.floor(Math.random() * enemyAbilities.length)];
     setLog(prev => [...prev, `> Enemy used ${enemyMove.name}`]);
 
-    setTimeout(() => { // Delay enemy attack response
-      setTimeout(() => { // Delay damage application
+    setTimeout(() => {
+      setAnnouncement({ name: enemyMove.name, actor: 'enemy' });
+      setTimeout(() => {
+        setAnnouncement(null);
+        setTimeout(() => { // Delay damage application
         // Check for stun on enemy
         const isEnemyStunned = enemyStatusEffects.some(effect => effect.type === 'stun');
         if (isEnemyStunned) {
@@ -172,6 +183,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
 
           setPlayerDamage(actualDamage);
           setIsPlayerDamaged(true); // Trigger player hit animation
+          if (actualDamage >= 15) triggerCameraShake();
           setPlayerHP(prev => {
             const newPlayerHP = Math.max(0, prev - actualDamage);
             if (newPlayerHP <= 0) {
@@ -188,10 +200,11 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             return newPlayerHP;
           });
         }
-        setTimeout(() => setPlayerDamage(null), 1200); // Slower fade out for damage number
+        setTimeout(() => setPlayerDamage(null), 1600); // Slower fade out for damage number
         setIsAnimating(false); // End animation
-      }, 600); // Delay to allow animation (~600ms)
-    }, 2000); // 2-second pause before enemy strikes
+      }, 600); // Delay damage application
+    }, 800); // Show announcement briefly
+  }, 2000); // 2-second pause before enemy strikes
   };
 
   const handleAbilityUse = (ability: Ability) => {
@@ -231,12 +244,16 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       }
     });
 
-    setTimeout(() => { // Delay damage application
+    setAnnouncement({ name: ability.name, actor: 'player' });
+    setTimeout(() => {
+      setAnnouncement(null);
+      setTimeout(() => { // Delay damage application
       const actualDamage = ability.damage;
       setEnemyHP(prev => {
         const newEnemyHP = Math.max(0, prev - actualDamage);
         setEnemyDamage(actualDamage);
         setWasJustEnemyDamaged(true); // Trigger enemy damage effect
+        if (actualDamage >= 15) triggerCameraShake();
         if (newEnemyHP <= 0) {
           setWinner("player"); // Set winner immediately
           setEnemyDamage(null);
@@ -251,13 +268,14 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
         }
         return newEnemyHP;
       });
-      setTimeout(() => setEnemyDamage(null), 1200); // Slower fade out for damage number
+      setTimeout(() => setEnemyDamage(null), 1600); // Slower fade out for damage number
 
       setIsAnimating(false); // End animation
       setTimeout(() => {
         runEnemyTurn();
       }, 600); // Delay for enemy turn after player attack animation
     }, 600); // Delay to allow animation (~600ms)
+    }, 400); // Announcement duration
   };
 
   useEffect(() => {
@@ -344,7 +362,8 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   }, [isAnimating, battleOver]); // Trigger when animation ends (turn completes)
 
   return (
-    <div className="screen font-mono text-green-400 bg-black min-h-screen p-4 relative flex flex-col justify-between">
+    <div className={`screen font-mono text-green-400 bg-black min-h-screen p-4 relative flex flex-col justify-between ${cameraShake ? 'camera-shake' : ''}`}> 
+      {cameraShake && <div className="absolute inset-0 glitch-lines" />}
       {showSplash && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -381,8 +400,11 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
 
         {/* PLAYER */}
         <div className="relative flex flex-col items-center">
+          {announcement && announcement.actor === 'player' && (
+            <AbilityAnnouncement name={announcement.name} />
+          )}
           {playerDamage !== null && (
-            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-2xl animate-float-damage pointer-events-none">
+            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-3xl animate-float-damage glitch-text pointer-events-none">
               -{playerDamage}
             </div>
           )}
@@ -426,8 +448,11 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
 
         {/* ENEMY */}
         <div className="relative flex flex-col items-center">
+          {announcement && announcement.actor === 'enemy' && (
+            <AbilityAnnouncement name={announcement.name} />
+          )}
           {enemyDamage !== null && (
-            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-2xl animate-float-damage pointer-events-none">
+            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-3xl animate-float-damage glitch-text pointer-events-none">
               -{enemyDamage}
             </div>
           )}
