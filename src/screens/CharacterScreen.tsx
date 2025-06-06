@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usePlayer } from '../context/PlayerContext';
 
 const characters = [
   {
@@ -14,6 +15,7 @@ const characters = [
 
 const CharacterScreen = () => {
   const navigate = useNavigate();
+  const { stats, equipped } = usePlayer();
   const [currentIndex, setCurrentIndex] = useState(0);
   const selected = characters[currentIndex];
 
@@ -50,18 +52,18 @@ const CharacterScreen = () => {
         <div className="w-full md:w-1/2 mt-6 md:mt-0 p-4">
           <h2 className="text-lg mb-2 border-b border-green-400">Stats</h2>
           <ul className="mb-4">
-            <li>HP: 100</li>
-            <li>STR: 15</li>
-            <li>DEX: 12</li>
-            <li>INT: 10</li>
-            <li>DEF: 8</li>
+            <li>HP: {stats.hp}</li>
+            <li>STR: {stats.str}</li>
+            <li>DEX: {stats.dex}</li>
+            <li>INT: {stats.int}</li>
+            <li>DEF: {stats.def}</li>
           </ul>
 
           <h2 className="text-lg mb-2 border-b border-green-400">Equipped</h2>
           <ul>
-            <li>Sword: Iron Cleaver</li>
-            <li>Armor: Leather Vest</li>
-            <li>Trinket: Old Locket</li>
+            <li>Weapon: {equipped.Weapon?.name || 'None'}</li>
+            <li>Armor: {equipped.Armor?.name || 'None'}</li>
+            <li>Trinket: {equipped.Trinket?.name || 'None'}</li>
           </ul>
         </div>
       </div>

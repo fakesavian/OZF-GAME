@@ -5,6 +5,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { ScreenLoaderProvider } from './context/ScreenLoaderContext'; // New import
+import { PlayerProvider } from './context/PlayerContext';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -12,9 +13,11 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <ScreenLoaderProvider>
-        <App />
-      </ScreenLoaderProvider>
+      <PlayerProvider>
+        <ScreenLoaderProvider>
+          <App />
+        </ScreenLoaderProvider>
+      </PlayerProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

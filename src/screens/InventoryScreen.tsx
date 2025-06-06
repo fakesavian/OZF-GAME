@@ -1,31 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-
-const items = [
-  {
-    name: "Iron Cleaver",
-    type: "Weapon",
-    description: "A jagged blade forged from scrap metal. Deals moderate damage.",
-  },
-  {
-    name: "Med Patch",
-    type: "Consumable",
-    description: "Restores 25 HP when applied.",
-  },
-  {
-    name: "Old Locket",
-    type: "Trinket",
-    description: "A mysterious charm. Boosts INT slightly.",
-  },
-  {
-    name: "Nano Mesh Vest",
-    type: "Armor",
-    description: "Basic protection against physical damage.",
-  },
-];
+import { items, usePlayer } from '../context/PlayerContext';
 
 const InventoryScreen = () => {
   const navigate = useNavigate();
+  const { equip, useItem, equipped } = usePlayer();
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const selected = items[selectedItemIndex];
 
@@ -45,18 +24,22 @@ const InventoryScreen = () => {
         
         {/* Inventory Grid */}
         <div className="grid grid-cols-2 gap-4 w-full md:w-2/3">
-          {items.map((item, index) => (
-            <button
-              key={index}
-              className={`border p-4 text-left hover:bg-green-900 transition-all ${
-                index === selectedItemIndex ? "border-green-300" : "border-green-400"
-              }`}
-              onClick={() => setSelectedItemIndex(index)}
-            >
-              <p className="text-sm">{item.name}</p>
-              <p className="text-xs text-green-300">{item.type}</p>
-            </button>
-          ))}
+          {items.map((item, index) => {
+            const equippedName = equipped[item.type as 'Weapon' | 'Armor' | 'Trinket']?.name;
+            const isEquipped = equippedName === item.name;
+            return (
+              <button
+                key={index}
+                className={`border p-4 text-left hover:bg-green-900 transition-all ${
+                  index === selectedItemIndex ? 'border-green-300' : 'border-green-400'
+                } ${isEquipped ? 'bg-green-800' : ''}`}
+                onClick={() => setSelectedItemIndex(index)}
+              >
+                <p className="text-sm">{item.name}</p>
+                <p className="text-xs text-green-300">{item.type}</p>
+              </button>
+            );
+          })}
         </div>
 
         {/* Item Detail Panel */}
@@ -68,6 +51,23 @@ const InventoryScreen = () => {
           <h2 className="text-lg border-b border-green-400 pb-1 mb-2">{selected.name}</h2>
           <p className="text-green-300 text-sm mb-2">{selected.type}</p>
           <p className="text-xs text-green-400">{selected.description}</p>
+          <div className="mt-4">
+            {selected.type === 'Consumable' ? (
+              <button
+                onClick={() => useItem(selected)}
+                className="border px-3 py-1 hover:bg-green-900"
+              >
+                Use
+              </button>
+            ) : (
+              <button
+                onClick={() => equip(selected)}
+                className="border px-3 py-1 hover:bg-green-900"
+              >
+                Equip
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
