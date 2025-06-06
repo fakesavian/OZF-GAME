@@ -6,7 +6,8 @@
     "start:backend": "cd backend && ts-node ozf_cli_simulator.ts",
     "start:frontend": "cd frontend && npm start",
     "build:frontend": "cd frontend && npm run build",
-    "test:frontend": "cd frontend && npm run test",
+"test": "cd frontend && npm run test",
+"test:frontend": "npm run test",
     "eject:frontend": "cd frontend && npm run eject",
     "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
   },
