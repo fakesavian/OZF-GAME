@@ -1,5 +1,6 @@
 import { MatchState, TurnAction, CombatLogEntry } from './types';
 import { validateTurn } from './validator';
+import { addLogEntry } from './combat_log';
 import { runMatchTurn } from './resolver';
 import { checkVictoryCondition } from './victory_checker';
 import { Ability } from '../types/db';
@@ -14,31 +15,45 @@ export const runTurn = (
   let currentMatchState = { ...initialMatchState };
   let logs: CombatLogEntry[] = [];
 
-  // Validate player A's turn (if applicable)
-  if (playerATurn && !validateTurn(currentMatchState, playerATurn)) {
-    logs.push({ turnNumber: currentMatchState.turnNumber, message: `Invalid turn for Player A: ${playerATurn.actorId}` });
-    playerATurn = null; // Invalidate the turn
+  let actionToRun: TurnAction | null = null;
+
+  // Determine action based on active player
+  if (playerATurn) {
+    actionToRun = playerATurn;
+  } else if (playerBTurn) {
+    actionToRun = playerBTurn;
   }
 
   // If it's a PvE match and it's the bot's turn, generate bot action
   let botTurnAction: TurnAction | null = null;
   if (currentMatchState.isBot && currentMatchState.activePlayerId === currentMatchState.playerB.profile.id) {
-    // For now, hardcode botType to 'tactical'. This should be dynamic in a real game.
     const botType = 'tactical';
     const botAI = BotModels[botType];
-    
+
     if (botAI) {
       botTurnAction = botAI.getAction(currentMatchState.playerB, currentMatchState.playerA);
-      logs.push({ turnNumber: currentMatchState.turnNumber, message: `Bot (${currentMatchState.playerB.username}) chose its action.` });
+      logs.push(addLogEntry(currentMatchState.turnNumber, `Bot (${currentMatchState.playerB.username}) chose its action.`));
     } else {
-      logs.push({ turnNumber: currentMatchState.turnNumber, message: `Bot AI type '${botType}' not found.` });
+      logs.push(addLogEntry(currentMatchState.turnNumber, `Bot AI type '${botType}' not found.`));
     }
   }
 
-  // Resolve turns
+  actionToRun = actionToRun || botTurnAction;
+
+  if (!actionToRun) {
+    logs.push(addLogEntry(currentMatchState.turnNumber, 'No action provided.'));
+    return { newMatchState: currentMatchState, logs, isGameOver: false, winnerId: null };
+  }
+
+  const validation = validateTurn(currentMatchState, actionToRun);
+  if (!validation.valid) {
+    logs.push(addLogEntry(currentMatchState.turnNumber, validation.reason || 'Invalid turn.', actionToRun.actorId, actionToRun.abilityId));
+    return { newMatchState: currentMatchState, logs, isGameOver: false, winnerId: null };
+  }
+  // Resolve turn
   const { updatedMatchState: resolvedState, combatLog: turnLogs, winner: turnWinner } = runMatchTurn(
     currentMatchState,
-    (playerATurn || botTurnAction || playerBTurn)! // Use non-null assertion
+    actionToRun
   );
   currentMatchState = resolvedState;
   logs = logs.concat(turnLogs);
