@@ -57,7 +57,13 @@ export interface Effect {
   target: 'self' | 'enemy'; // Required for strict type safety
 }
 
-export type StatusEffectType = 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
+export type StatusEffectType =
+  | 'burn'
+  | 'stun'
+  | 'shield'
+  | 'buff'
+  | 'debuff'
+  | 'poison';
 
 export interface StatusEffect {
   id: string; // Unique ID for the status effect instance

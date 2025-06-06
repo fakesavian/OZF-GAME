@@ -8,12 +8,22 @@ export interface Stats {
   def: number;
 }
 
+export type StatusEffectType = 'burn' | 'stun' | 'shield' | 'buff' | 'debuff' | 'poison';
+
+export interface StatusEffect {
+  type: StatusEffectType;
+  duration: number;
+  value?: number;
+  stat?: string;
+}
+
 export interface Item {
   name: string;
   type: 'Weapon' | 'Armor' | 'Trinket' | 'Consumable';
   description: string;
   bonuses?: Partial<Stats>;
   heal?: number;
+  statusEffect?: StatusEffect;
 }
 
 export const items: Item[] = [
@@ -41,6 +51,12 @@ export const items: Item[] = [
     description: 'Basic protection against physical damage.',
     bonuses: { def: 2 },
   },
+  {
+    name: 'Toxic Grenade',
+    type: 'Consumable',
+    description: 'Applies poison to the enemy for 3 turns.',
+    statusEffect: { type: 'poison', duration: 3, value: 4 },
+  },
 ];
 
 interface PlayerContextValue {
@@ -48,6 +64,7 @@ interface PlayerContextValue {
   equipped: { [K in 'Weapon' | 'Armor' | 'Trinket']?: Item };
   equip: (item: Item) => void;
   useItem: (item: Item) => void;
+  statusEffects: StatusEffect[];
 }
 
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
@@ -57,6 +74,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [hp, setHP] = useState(baseStats.hp);
   const [equipped, setEquipped] = useState<{ [K in 'Weapon' | 'Armor' | 'Trinket']?: Item }>({});
+  const [statusEffects, setStatusEffects] = useState<StatusEffect[]>([]);
 
   const equip = (item: Item) => {
     if (item.type === 'Consumable') return;
@@ -66,6 +84,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const useItem = (item: Item) => {
     if (item.heal) {
       setHP(prev => Math.min(baseStats.hp, prev + item.heal));
+    }
+    if (item.statusEffect) {
+      setStatusEffects(prev => [...prev, item.statusEffect!]);
     }
   };
 
@@ -78,7 +99,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <PlayerContext.Provider value={{ stats, equipped, equip, useItem }}>
+    <PlayerContext.Provider value={{ stats, equipped, equip, useItem, statusEffects }}>
       {children}
     </PlayerContext.Provider>
   );

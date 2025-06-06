@@ -1,0 +1,11 @@
+{
+  "acid_spit": {
+    "name": "Acid Spit",
+    "energy_cost": 10,
+    "cooldown": 2,
+    "target": "enemy",
+    "effects": [
+      { "type": "poison", "duration": 3, "value": 4 }
+    ]
+  }
+}

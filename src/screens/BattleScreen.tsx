@@ -4,7 +4,13 @@ import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
 
-type StatusEffectType = 'burn' | 'stun' | 'shield' | 'buff' | 'debuff';
+type StatusEffectType =
+  | 'burn'
+  | 'stun'
+  | 'shield'
+  | 'buff'
+  | 'debuff'
+  | 'poison';
 
 interface StatusEffect {
   type: StatusEffectType;
@@ -20,6 +26,9 @@ type Ability = {
   type: "physical" | "magic" | "defensive";
   description: string;
   effects?: StatusEffect[]; // Changed to StatusEffect[]
+  cooldown?: number;
+  weight?: number;
+  hpThreshold?: number;
 };
 
 const abilities: Ability[] = [
@@ -89,6 +98,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const [isAnimating, setIsAnimating] = useState(false); // New state for animation delay
   const [isPlayerDamaged, setIsPlayerDamaged] = useState(false); // New state for player hit animation
   const [isEnemyDamaged, setIsEnemyDamaged] = useState(false); // New state for enemy hit animation
+  const [enemyCooldowns, setEnemyCooldowns] = useState<Record<string, number>>({});
   const [wasJustPlayerDamaged, setWasJustPlayerDamaged] = useState(false); // New state for player damage trigger
   const [wasJustEnemyDamaged, setWasJustEnemyDamaged] = useState(false); // New state for enemy damage trigger
   const [cameraShake, setCameraShake] = useState(false);
@@ -99,6 +109,19 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     setTimeout(() => setCameraShake(false), 300);
   };
 
+  const applyStatus = (
+    target: 'player' | 'enemy',
+    effect: StatusEffect,
+    message: string
+  ) => {
+    if (target === 'player') {
+      setPlayerStatusEffects(prev => [...prev, effect]);
+    } else {
+      setEnemyStatusEffects(prev => [...prev, effect]);
+    }
+    setLog(prev => [...prev, message]);
+  };
+
   const enemyAbilities: Ability[] = [ // Explicitly type enemyAbilities
     {
       id: "bite",
@@ -107,6 +130,8 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       type: "physical",
       description: "A basic bite attack.",
       effects: [{ type: 'burn', duration: 2, value: 3 }], // Example enemy effect
+      cooldown: 0,
+      weight: 1,
     },
     {
       id: "scratch",
@@ -114,6 +139,8 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       damage: 6,
       type: "physical",
       description: "A quick scratch attack.",
+      cooldown: 0,
+      weight: 2,
     },
     {
       id: "acid_spit",
@@ -121,13 +148,34 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       damage: 14,
       type: "magic",
       description: "Spits corrosive acid.",
-      effects: [{ type: 'debuff', duration: 2, stat: 'defense', value: -3 }], // Example enemy effect
-    },
+      effects: [{ type: 'poison', duration: 3, value: 4 }],
+      cooldown: 2,
+      weight: 3,
+    hpThreshold: 50,
+  },
   ];
+
+  const chooseEnemyAbility = (): Ability => {
+    const current: Record<string, number> = Object.fromEntries(
+      Object.entries(enemyCooldowns).map(([id, cd]) => [id, Math.max(0, cd - 1)])
+    );
+    setEnemyCooldowns(current);
+    const available = enemyAbilities.filter(
+      a => (current[a.id] || 0) === 0 && (!a.hpThreshold || enemyHP <= a.hpThreshold)
+    );
+    const total = available.reduce((sum, a) => sum + (a.weight || 1), 0);
+    let r = Math.random() * total;
+    for (const a of available) {
+      r -= a.weight || 1;
+      if (r <= 0) return a;
+    }
+    return available[0];
+  };
 
   const runEnemyTurn = () => {
     setIsAnimating(true); // Start animation
-    const enemyMove = enemyAbilities[Math.floor(Math.random() * enemyAbilities.length)];
+    const enemyMove = chooseEnemyAbility();
+    setEnemyCooldowns(prev => ({ ...prev, [enemyMove.id]: enemyMove.cooldown || 0 }));
     setLog(prev => [...prev, `> Enemy used ${enemyMove.name}`]);
 
     setTimeout(() => {
@@ -145,20 +193,17 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
           // Apply enemy ability effects
           enemyMove.effects?.forEach(effect => {
             if (effect.type === 'shield') {
-              setPlayerStatusEffects(prev => [...prev, effect]);
-              setLog(prev => [...prev, `> You gain a ${effect.value} point shield.`]);
+              applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
             } else if (effect.type === 'burn') {
-              setPlayerStatusEffects(prev => [...prev, effect]);
-              setLog(prev => [...prev, `> You are burned for ${effect.duration} turn(s).`]);
+              applyStatus('player', effect, `> You are burned for ${effect.duration} turn(s).`);
             } else if (effect.type === 'stun') {
-              setPlayerStatusEffects(prev => [...prev, effect]);
-              setLog(prev => [...prev, `> You are stunned for ${effect.duration} turn(s).`]);
+              applyStatus('player', effect, `> You are stunned for ${effect.duration} turn(s).`);
             } else if (effect.type === 'buff') {
-              setPlayerStatusEffects(prev => [...prev, effect]);
-              setLog(prev => [...prev, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`]);
+              applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
             } else if (effect.type === 'debuff') {
-              setPlayerStatusEffects(prev => [...prev, effect]);
-              setLog(prev => [...prev, `> You suffer a debuff to ${effect.stat} for ${effect.duration} turn(s).`]);
+              applyStatus('player', effect, `> You suffer a debuff to ${effect.stat} for ${effect.duration} turn(s).`);
+            } else if (effect.type === 'poison') {
+              applyStatus('player', effect, `> You are poisoned for ${effect.duration} turn(s).`);
             }
           });
 
@@ -227,20 +272,17 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     // Apply player ability effects
     ability.effects?.forEach(effect => {
       if (effect.type === 'shield') {
-        setPlayerStatusEffects(prev => [...prev, effect]);
-        setLog(prev => [...prev, `> You gain a ${effect.value} point shield.`]);
+        applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
       } else if (effect.type === 'burn') {
-        setEnemyStatusEffects(prev => [...prev, effect]);
-        setLog(prev => [...prev, `> Enemy is burned for ${effect.duration} turn(s).`]);
+        applyStatus('enemy', effect, `> Enemy is burned for ${effect.duration} turn(s).`);
       } else if (effect.type === 'stun') {
-        setEnemyStatusEffects(prev => [...prev, effect]);
-        setLog(prev => [...prev, `> Enemy is stunned for ${effect.duration} turn(s).`]);
+        applyStatus('enemy', effect, `> Enemy is stunned for ${effect.duration} turn(s).`);
       } else if (effect.type === 'buff') {
-        setPlayerStatusEffects(prev => [...prev, effect]);
-        setLog(prev => [...prev, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`]);
+        applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
       } else if (effect.type === 'debuff') {
-        setEnemyStatusEffects(prev => [...prev, effect]);
-        setLog(prev => [...prev, `> Enemy suffers a debuff to ${effect.stat} for ${effect.duration} turn(s).`]);
+        applyStatus('enemy', effect, `> Enemy suffers a debuff to ${effect.stat} for ${effect.duration} turn(s).`);
+      } else if (effect.type === 'poison') {
+        applyStatus('enemy', effect, `> Enemy is poisoned for ${effect.duration} turn(s).`);
       }
     });
 
@@ -326,6 +368,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     shield: "text-blue-400",
     buff: "text-green-400",
     debuff: "text-purple-400",
+    poison: "text-teal-400",
   };
 
   // Process status effects at the end of each turn
@@ -345,6 +388,10 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
           const burnDamage = effect.value || 0;
           newHP -= burnDamage;
           setLog(prev => [...prev, `> ${characterName} takes ${burnDamage} burn damage.`]);
+        } else if (effect.type === 'poison') {
+          const poisonDamage = effect.value || 0;
+          newHP -= poisonDamage;
+          setLog(prev => [...prev, `> ${characterName} suffers ${poisonDamage} poison damage.`]);
         }
         effect.duration -= 1;
         return effect.duration > 0;

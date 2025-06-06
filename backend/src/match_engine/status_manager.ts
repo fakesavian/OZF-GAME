@@ -31,6 +31,7 @@ export function applyEffect(player: PlayerState, effect: StatusEffect): PlayerSt
     case 'burn':
     case 'stun':
     case 'shield':
+    case 'poison':
       // These are status effects that are added to the array
       updated = applyStatus(updated, effect);
       break;
@@ -54,6 +55,9 @@ export function processStatusEffects(character: PlayerState): PlayerState {
     switch (effect.type) {
       case 'burn':
         updatedCharacter.hp -= effect.value || 0; // Apply burn damage
+        break;
+      case 'poison':
+        updatedCharacter.hp -= effect.value || 0; // Poison damage each turn
         break;
       case 'stun':
         // Stun effect is handled in the action phase (resolver.ts)
