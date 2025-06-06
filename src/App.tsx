@@ -12,16 +12,7 @@ import BattleScreen from "./screens/BattleScreen";
 import InventoryScreen from "./screens/InventoryScreen";
 import CharacterScreen from "./screens/CharacterScreen";
 import SettingsScreen from "./screens/SettingsScreen";
-import { useEffect, useState } from "react";
 
-// Wrapper for BattleScreen to handle navigation prop
-const BattleScreenWrapper = () => {
-  const navigate = useNavigate();
-  const handleQuit = () => {
-    navigate("/menu");
-  };
-  return <BattleScreen onQuit={handleQuit} />;
-};
 
 function App() {
   const seenBoot = sessionStorage.getItem('seenBoot');
@@ -32,7 +23,7 @@ function App() {
       <Route path="/" element={<BootWrapper />} />
       <Route path="/login" element={<LoginScreen />} />
       <Route path="/menu" element={<MenuScreen />} />
-      <Route path="/battle" element={<BattleScreenWrapper />} />
+      <Route path="/battle" element={<BattleScreen />} />
       <Route path="/inventory" element={<InventoryScreen />} />
       <Route path="/settings" element={<SettingsScreen />} />
       <Route path="/character" element={<CharacterScreen />} />
