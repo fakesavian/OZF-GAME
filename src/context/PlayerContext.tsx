@@ -24,6 +24,10 @@ export interface Item {
   bonuses?: Partial<Stats>;
   heal?: number;
   statusEffect?: StatusEffect;
+  /** Effect target - defaults to self */
+  target?: 'self' | 'enemy';
+  /** Remove a status effect */
+  cureStatus?: StatusEffectType;
 }
 
 export const items: Item[] = [
@@ -38,6 +42,7 @@ export const items: Item[] = [
     type: 'Consumable',
     description: 'Restores 25 HP when applied.',
     heal: 25,
+    target: 'self',
   },
   {
     name: 'Old Locket',
@@ -56,6 +61,21 @@ export const items: Item[] = [
     type: 'Consumable',
     description: 'Applies poison to the enemy for 3 turns.',
     statusEffect: { type: 'poison', duration: 3, value: 4 },
+    target: 'enemy',
+  },
+  {
+    name: 'Antidote',
+    type: 'Consumable',
+    description: 'Cures poison effects.',
+    cureStatus: 'poison',
+    target: 'self',
+  },
+  {
+    name: 'Boost Serum',
+    type: 'Consumable',
+    description: 'Temporarily increases attack power.',
+    statusEffect: { type: 'buff', duration: 2, stat: 'attack', value: 5 },
+    target: 'self',
   },
 ];
 
@@ -82,8 +102,14 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const consumeItem = (item: Item) => {
+    if (item.target && item.target !== 'self') {
+      return;
+    }
     if (item.heal) {
       setHP(prev => Math.min(baseStats.hp, prev + item.heal));
+    }
+    if (item.cureStatus) {
+      setStatusEffects(prev => prev.filter(e => e.type !== item.cureStatus));
     }
     if (item.statusEffect) {
       setStatusEffects(prev => [...prev, item.statusEffect!]);
