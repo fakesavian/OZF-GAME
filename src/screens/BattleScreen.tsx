@@ -450,7 +450,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             <AbilityAnnouncement name={announcement.name} />
           )}
           {playerDamage !== null && (
-            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-3xl animate-float-damage glitch-text pointer-events-none">
+            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-5xl animate-float-damage glitch-text pointer-events-none">
               -{playerDamage}
             </div>
           )}
@@ -498,7 +498,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
             <AbilityAnnouncement name={announcement.name} />
           )}
           {enemyDamage !== null && (
-            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-3xl animate-float-damage glitch-text pointer-events-none">
+            <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-red-500 text-5xl animate-float-damage glitch-text pointer-events-none">
               -{enemyDamage}
             </div>
           )}
