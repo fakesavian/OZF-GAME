@@ -4,7 +4,7 @@ import { items, usePlayer } from '../context/PlayerContext';
 
 const InventoryScreen = () => {
   const navigate = useNavigate();
-  const { equip, useItem, equipped } = usePlayer();
+  const { equip, consumeItem, equipped } = usePlayer();
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const selected = items[selectedItemIndex];
 
@@ -54,7 +54,7 @@ const InventoryScreen = () => {
           <div className="mt-4">
             {selected.type === 'Consumable' ? (
               <button
-                onClick={() => useItem(selected)}
+                onClick={() => consumeItem(selected)}
                 className="border px-3 py-1 hover:bg-green-900"
               >
                 Use

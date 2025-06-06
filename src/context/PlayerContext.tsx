@@ -63,7 +63,7 @@ interface PlayerContextValue {
   stats: Stats;
   equipped: { [K in 'Weapon' | 'Armor' | 'Trinket']?: Item };
   equip: (item: Item) => void;
-  useItem: (item: Item) => void;
+  consumeItem: (item: Item) => void;
   statusEffects: StatusEffect[];
 }
 
@@ -81,7 +81,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     setEquipped(prev => ({ ...prev, [item.type]: item }));
   };
 
-  const useItem = (item: Item) => {
+  const consumeItem = (item: Item) => {
     if (item.heal) {
       setHP(prev => Math.min(baseStats.hp, prev + item.heal));
     }
@@ -99,7 +99,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <PlayerContext.Provider value={{ stats, equipped, equip, useItem, statusEffects }}>
+    <PlayerContext.Provider value={{ stats, equipped, equip, consumeItem, statusEffects }}>
       {children}
     </PlayerContext.Provider>
   );
