@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import AbilityAnnouncement from '../components/AbilityAnnouncement';
+import AttackEffect from '../components/AttackEffect';
 import { useNavigate } from 'react-router-dom'; // New import
 import { EndBattleScreen } from './EndBattleScreen'; // New import
 
@@ -98,6 +99,8 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const [isAnimating, setIsAnimating] = useState(false); // New state for animation delay
   const [isPlayerDamaged, setIsPlayerDamaged] = useState(false); // New state for player hit animation
   const [isEnemyDamaged, setIsEnemyDamaged] = useState(false); // New state for enemy hit animation
+  const [showPlayerEffect, setShowPlayerEffect] = useState(false);
+  const [showEnemyEffect, setShowEnemyEffect] = useState(false);
   const [enemyCooldowns, setEnemyCooldowns] = useState<Record<string, number>>({});
   const [wasJustPlayerDamaged, setWasJustPlayerDamaged] = useState(false); // New state for player damage trigger
   const [wasJustEnemyDamaged, setWasJustEnemyDamaged] = useState(false); // New state for enemy damage trigger
@@ -227,6 +230,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
           });
 
           setPlayerDamage(actualDamage);
+          setShowPlayerEffect(true);
           setIsPlayerDamaged(true); // Trigger player hit animation
           if (actualDamage >= 15) triggerCameraShake();
           setPlayerHP(prev => {
@@ -294,6 +298,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       setEnemyHP(prev => {
         const newEnemyHP = Math.max(0, prev - actualDamage);
         setEnemyDamage(actualDamage);
+        setShowEnemyEffect(true);
         setWasJustEnemyDamaged(true); // Trigger enemy damage effect
         if (actualDamage >= 15) triggerCameraShake();
         if (newEnemyHP <= 0) {
@@ -470,6 +475,9 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
                 ease: "easeInOut",
               }}
             />
+            {showPlayerEffect && (
+              <AttackEffect onComplete={() => setShowPlayerEffect(false)} />
+            )}
           </div>
           <p className="text-green-300">YOU</p>
           <div className="w-40 h-3 bg-green-900 border border-green-400 mt-2">
@@ -524,6 +532,9 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
                 ease: "easeInOut",
               }}
             />
+            {showEnemyEffect && (
+              <AttackEffect onComplete={() => setShowEnemyEffect(false)} />
+            )}
           </div>
           <p className="text-red-400">ENEMY</p>
           <div className="w-40 h-3 bg-red-900 border border-red-400 mt-2">
