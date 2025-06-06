@@ -6,7 +6,8 @@ export const runEffect = (
   effect: Effect,
   sourcePlayer: PlayerState,
   targetPlayer: PlayerState,
-  matchState: MatchState
+  matchState: MatchState,
+  abilityId: string
 ): { newMatchState: MatchState; logs: CombatLogEntry[] } => {
   let currentMatchState = { ...matchState };
   let logs: CombatLogEntry[] = [];
@@ -34,7 +35,7 @@ export const runEffect = (
           id: `stun-${Date.now()}`, // Simple unique ID
           type: 'stun',
           duration: effect.duration,
-          sourceAbilityId: '', // TODO: Pass actual ability ID
+          sourceAbilityId: abilityId,
           appliedAtTurn: currentMatchState.turnNumber,
         };
         updatedTargetPlayer = addStatusEffect(target, stunEffect);
