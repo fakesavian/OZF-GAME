@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useAnimation } from 'framer-motion';
 import AbilityAnnouncement from '../components/AbilityAnnouncement';
 import AttackEffect from '../components/AttackEffect';
 import { useNavigate } from 'react-router-dom'; // New import
@@ -85,6 +85,11 @@ const abilities: Ability[] = [
 
 const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
   const navigate = useNavigate(); // New hook
+  const controls = useAnimation();
+  const wait = (duration: number) => {
+    controls.set({ opacity: 0 });
+    return controls.start({ opacity: 1, transition: { duration } });
+  };
   const [playerHP, setPlayerHP] = useState(100);
   const [enemyHP, setEnemyHP] = useState(100);
   const [playerStatusEffects, setPlayerStatusEffects] = useState<StatusEffect[]>([]);
@@ -182,104 +187,103 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     return available[0];
   };
 
-  const runEnemyTurn = () => {
+  const runEnemyTurn = async () => {
     setIsAnimating(true); // Start animation
     const enemyMove = chooseEnemyAbility();
     setEnemyCooldowns(prev => ({ ...prev, [enemyMove.id]: enemyMove.cooldown || 0 }));
     setLog(prev => [...prev, `> Enemy used ${enemyMove.name}`]);
 
-    setTimeout(() => {
-      setAnnouncement({ name: enemyMove.name, actor: 'enemy' });
-      setTimeout(() => {
-        setAnnouncement(null);
-        setTimeout(() => { // Delay damage application
-        // Check for stun on enemy
-        const isEnemyStunned = enemyStatusEffects.some(effect => effect.type === 'stun');
-        if (isEnemyStunned) {
-          setLog(prev => [...prev, `> Enemy is stunned and cannot act!`]);
-          // Reduce stun duration when enemy would act
-          setEnemyStatusEffects(prev => {
-            const updated: StatusEffect[] = [];
-            prev.forEach(effect => {
-              if (effect.type === 'stun') {
-                const next = { ...effect };
-                if (!next.justApplied) {
-                  next.duration -= 1;
-                }
-                if (next.duration > 0) {
-                  updated.push(next);
-                }
-              } else {
-                updated.push(effect);
-              }
-            });
-            return updated;
-          });
-        } else {
-          // Apply enemy ability effects
-          enemyMove.effects?.forEach(effect => {
-            if (effect.type === 'shield') {
-              applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
-            } else if (effect.type === 'burn') {
-              applyStatus('player', effect, `> You are burned for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'stun') {
-              applyStatus('player', effect, `> You are stunned for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'buff') {
-              applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'debuff') {
-              applyStatus('player', effect, `> You suffer a debuff to ${effect.stat} for ${effect.duration} turn(s).`);
-            } else if (effect.type === 'poison') {
-              applyStatus('player', effect, `> You are poisoned for ${effect.duration} turn(s).`);
-            }
-          });
+    await wait(2);
+    setAnnouncement({ name: enemyMove.name, actor: 'enemy' });
+    await wait(0.8);
+    setAnnouncement(null);
+    await wait(0.6);
 
-          // Apply damage, considering shield
-          let actualDamage = enemyMove.damage;
-          let shieldAbsorbed = 0;
-          setPlayerStatusEffects(prevEffects => {
-            const updatedEffects = [...prevEffects];
-            const shieldIndex = updatedEffects.findIndex(e => e.type === 'shield');
-            if (shieldIndex !== -1) {
-              const shieldEffect = updatedEffects[shieldIndex];
-              shieldAbsorbed = Math.min(actualDamage, shieldEffect.value || 0);
-              actualDamage = Math.max(0, actualDamage - shieldAbsorbed);
-              shieldEffect.value = (shieldEffect.value || 0) - shieldAbsorbed;
-              if ((shieldEffect.value || 0) <= 0) {
-                updatedEffects.splice(shieldIndex, 1); // Remove shield if fully consumed
-              }
-              setLog(prev => [...prev, `> Your shield absorbed ${shieldAbsorbed} damage!`]);
+    // Check for stun on enemy
+    const isEnemyStunned = enemyStatusEffects.some(effect => effect.type === 'stun');
+    if (isEnemyStunned) {
+      setLog(prev => [...prev, `> Enemy is stunned and cannot act!`]);
+      // Reduce stun duration when enemy would act
+      setEnemyStatusEffects(prev => {
+        const updated: StatusEffect[] = [];
+        prev.forEach(effect => {
+          if (effect.type === 'stun') {
+            const next = { ...effect };
+            if (!next.justApplied) {
+              next.duration -= 1;
             }
-            return updatedEffects;
-          });
-
-          setPlayerDamage(actualDamage);
-          setShowPlayerEffect(true);
-          setIsPlayerDamaged(true); // Trigger player hit animation
-          if (actualDamage >= 15) triggerCameraShake();
-          setPlayerHP(prev => {
-            const newPlayerHP = Math.max(0, prev - actualDamage);
-            if (newPlayerHP <= 0) {
-              setWinner("opponent"); // Set winner immediately
-              setPlayerDefeated(true); // Trigger player defeat animation
-              setTimeout(() => {
-                setShowSplash(true); // Show splash after player animation (1.2s)
-              }, 1200);
-              setTimeout(() => {
-                setShowSplash(false); // Hide splash
-                setBattleOver(true);  // Show EndBattleScreen
-              }, 3200); // Total 1.2s (animation) + 2s (splash) = 3.2s
+            if (next.duration > 0) {
+              updated.push(next);
             }
-            return newPlayerHP;
-          });
+          } else {
+            updated.push(effect);
+          }
+        });
+        return updated;
+      });
+    } else {
+      // Apply enemy ability effects
+      enemyMove.effects?.forEach(effect => {
+        if (effect.type === 'shield') {
+          applyStatus('player', effect, `> You gain a ${effect.value} point shield.`);
+        } else if (effect.type === 'burn') {
+          applyStatus('player', effect, `> You are burned for ${effect.duration} turn(s).`);
+        } else if (effect.type === 'stun') {
+          applyStatus('player', effect, `> You are stunned for ${effect.duration} turn(s).`);
+        } else if (effect.type === 'buff') {
+          applyStatus('player', effect, `> You gain a buff to ${effect.stat} for ${effect.duration} turn(s).`);
+        } else if (effect.type === 'debuff') {
+          applyStatus('player', effect, `> You suffer a debuff to ${effect.stat} for ${effect.duration} turn(s).`);
+        } else if (effect.type === 'poison') {
+          applyStatus('player', effect, `> You are poisoned for ${effect.duration} turn(s).`);
         }
-        setTimeout(() => setPlayerDamage(null), 1600); // Slower fade out for damage number
-        setIsAnimating(false); // End animation
-      }, 600); // Delay damage application
-    }, 800); // Show announcement briefly
-  }, 2000); // 2-second pause before enemy strikes
+      });
+
+      // Apply damage, considering shield
+      let actualDamage = enemyMove.damage;
+      let shieldAbsorbed = 0;
+      setPlayerStatusEffects(prevEffects => {
+        const updatedEffects = [...prevEffects];
+        const shieldIndex = updatedEffects.findIndex(e => e.type === 'shield');
+        if (shieldIndex !== -1) {
+          const shieldEffect = updatedEffects[shieldIndex];
+          shieldAbsorbed = Math.min(actualDamage, shieldEffect.value || 0);
+          actualDamage = Math.max(0, actualDamage - shieldAbsorbed);
+          shieldEffect.value = (shieldEffect.value || 0) - shieldAbsorbed;
+          if ((shieldEffect.value || 0) <= 0) {
+            updatedEffects.splice(shieldIndex, 1); // Remove shield if fully consumed
+          }
+          setLog(prev => [...prev, `> Your shield absorbed ${shieldAbsorbed} damage!`]);
+        }
+        return updatedEffects;
+      });
+
+      setPlayerDamage(actualDamage);
+      setShowPlayerEffect(true);
+      setIsPlayerDamaged(true); // Trigger player hit animation
+      if (actualDamage >= 15) triggerCameraShake();
+      setPlayerHP(prev => {
+        const newPlayerHP = Math.max(0, prev - actualDamage);
+        if (newPlayerHP <= 0) {
+          setWinner("opponent"); // Set winner immediately
+          setPlayerDefeated(true); // Trigger player defeat animation
+          setTimeout(() => {
+            setShowSplash(true); // Show splash after player animation (1.2s)
+          }, 1200);
+          setTimeout(() => {
+            setShowSplash(false); // Hide splash
+            setBattleOver(true);  // Show EndBattleScreen
+          }, 3200); // Total 1.2s (animation) + 2s (splash) = 3.2s
+        }
+        return newPlayerHP;
+      });
+    }
+    await wait(1.6);
+    setPlayerDamage(null); // Slower fade out for damage number
+    setIsAnimating(false); // End animation
   };
 
-  const handleAbilityUse = (ability: Ability) => {
+  const handleAbilityUse = async (ability: Ability) => {
     setIsAnimating(true); // Start animation
     setLog(prev => [...prev, `> You used ${ability.name}`]);
 
@@ -305,10 +309,9 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
         });
         return updated;
       });
-      setTimeout(() => {
-        setIsAnimating(false);
-        runEnemyTurn();
-      }, 600);
+      await wait(0.6);
+      setIsAnimating(false);
+      await runEnemyTurn();
       return;
     }
 
@@ -330,38 +333,36 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
     });
 
     setAnnouncement({ name: ability.name, actor: 'player' });
-    setTimeout(() => {
-      setAnnouncement(null);
-      setTimeout(() => { // Delay damage application
-      const actualDamage = ability.damage;
-      setEnemyHP(prev => {
-        const newEnemyHP = Math.max(0, prev - actualDamage);
-        setEnemyDamage(actualDamage);
-        setShowEnemyEffect(true);
-        setWasJustEnemyDamaged(true); // Trigger enemy damage effect
-        if (actualDamage >= 15) triggerCameraShake();
-        if (newEnemyHP <= 0) {
-          setWinner("player"); // Set winner immediately
-          setEnemyDamage(null);
-          setEnemyDefeated(true);
-          setTimeout(() => {
-            setShowSplash(true);
-          }, 1200);
-          setTimeout(() => {
-            setShowSplash(false);
-            setBattleOver(true);
-          }, 3200);
-        }
-        return newEnemyHP;
-      });
-      setTimeout(() => setEnemyDamage(null), 1600); // Slower fade out for damage number
+    await wait(0.4);
+    setAnnouncement(null);
+    await wait(0.6);
+    const actualDamage = ability.damage;
+    setEnemyHP(prev => {
+      const newEnemyHP = Math.max(0, prev - actualDamage);
+      setEnemyDamage(actualDamage);
+      setShowEnemyEffect(true);
+      setWasJustEnemyDamaged(true); // Trigger enemy damage effect
+      if (actualDamage >= 15) triggerCameraShake();
+      if (newEnemyHP <= 0) {
+        setWinner("player"); // Set winner immediately
+        setEnemyDamage(null);
+        setEnemyDefeated(true);
+        setTimeout(() => {
+          setShowSplash(true);
+        }, 1200);
+        setTimeout(() => {
+          setShowSplash(false);
+          setBattleOver(true);
+        }, 3200);
+      }
+      return newEnemyHP;
+    });
+    await wait(1.6);
+    setEnemyDamage(null); // Slower fade out for damage number
 
-      setIsAnimating(false); // End animation
-      setTimeout(() => {
-        runEnemyTurn();
-      }, 600); // Delay for enemy turn after player attack animation
-    }, 600); // Delay to allow animation (~600ms)
-    }, 400); // Announcement duration
+    setIsAnimating(false); // End animation
+    await wait(0.6);
+    await runEnemyTurn();
   };
 
   useEffect(() => {
@@ -637,6 +638,7 @@ const BattleScreen = ({ onQuit }: { onQuit: () => void }) => {
       {battleOver && (
         <EndBattleScreen winner={winner} onRestart={handleRestart} />
       )}
+      <motion.div animate={controls} className="hidden" />
     </div>
   );
 };
