@@ -422,3 +422,11 @@
   mix-blend-mode: overlay;
   pointer-events: none;
 }
+
+/* Attack effect styles */
+.attack-effect { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; }
+.attack-effect.burst { width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,0,0,0.6) 40%, rgba(255,0,0,0) 70%); animation: effect-burst 0.4s ease-out forwards; }
+.attack-effect.slash { width: 80px; height: 20px; background: linear-gradient(45deg, rgba(255,255,255,0.9), rgba(255,0,0,0.5)); animation: effect-slash 0.4s ease-out forwards; }
+@keyframes effect-burst { from { transform: translate(-50%, -50%) scale(0.2); opacity: 1; } to { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+@keyframes effect-slash { from { transform: translate(-50%, -50%) rotate(0deg) scaleX(0); opacity: 1; } to { transform: translate(-50%, -50%) rotate(-45deg) scaleX(1); opacity: 0; } }
+
