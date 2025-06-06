@@ -238,9 +238,42 @@ wss.on('connection', ws => {
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', async () => {
     console.log('Client disconnected');
-    // TODO: Handle player disconnection from active matches
+
+    // Find the match and player associated with this socket
+    for (const [matchId, matchEntry] of activeMatches.entries()) {
+      for (const [playerId, playerWs] of Object.entries(matchEntry.players)) {
+        if (playerWs === ws) {
+          delete matchEntry.players[playerId];
+          console.log(`Player ${playerId} disconnected from match ${matchId}`);
+
+          if (matchEntry.matchState.status === 'active') {
+            const winnerId =
+              playerId === matchEntry.matchState.playerA.profile.id
+                ? matchEntry.matchState.playerB.profile.id
+                : matchEntry.matchState.playerA.profile.id;
+
+            matchEntry.matchState.status = 'forfeit';
+            matchEntry.matchState.winnerId = winnerId;
+
+            // Notify remaining players
+            for (const wsPlayer of Object.values(matchEntry.players)) {
+              if (wsPlayer.readyState === WebSocket.OPEN) {
+                wsPlayer.send(
+                  JSON.stringify({ type: 'MATCH_STATE_UPDATE', state: matchEntry.matchState, logs: [] })
+                );
+              }
+            }
+
+            await updateMatchStatus(matchId, 'forfeit', winnerId);
+            activeMatches.delete(matchId);
+          }
+
+          return;
+        }
+      }
+    }
   });
 
   ws.on('error', error => {
