@@ -48,6 +48,7 @@ export function applyEffect(player: PlayerState, effect: StatusEffect): PlayerSt
 }
 
 export function processStatusEffects(character: PlayerState): PlayerState {
+console.log(">> Status Manager running: current effects", character.statusEffects);
   let updatedCharacter = { ...character };
   const effectsToRemove: string[] = [];
 

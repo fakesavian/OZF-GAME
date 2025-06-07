@@ -1,0 +1,51 @@
+.matrixRain {
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    to bottom,
+    #00ff99 0%, /* Brighter green for lines */
+    #00ff99 1%,
+    transparent 1%,
+    transparent 3%
+  );
+  animation: matrixFall 1.2s linear infinite;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0.2));
+  opacity: 0.9;
+  position: absolute; /* Ensure it covers its container */
+  top: 0;
+  left: 0;
+}
+
+@keyframes matrixFall {
+  0% {
+    background-position-y: 0%;
+  }
+  100% {
+    background-position-y: 100%; /* Ensures the gradient repeats seamlessly */
+  }
+}
+
+/* Optional: CRT flicker flash - can be added to the parent div of MatrixRainTransition */
+.crt-flash {
+  animation: crt-flash-anim 0.3s linear;
+}
+
+@keyframes crt-flash-anim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; background-color: white; }
+}
+
+/* Optional: Terminal log text style */
+.matrix-log-text {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #00ff99;
+  font-family: monospace;
+  font-size: 1.5rem;
+  text-align: center;
+  white-space: pre;
+  text-shadow: 0 0 5px #00ff99;
+  z-index: 10; /* Above matrix rain but below overall container if needed */
+}

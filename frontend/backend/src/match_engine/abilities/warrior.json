@@ -1,0 +1,56 @@
+{
+  "meteor_charge": {
+    "name": "Meteoric Charge",
+    "description": "Rushes the target and stuns them.",
+    "energy_cost": 20,
+    "cooldown": 2,
+    "target": "enemy",
+    "effects": [
+      { "type": "damage", "value": 30 },
+      { "type": "stun", "duration": 1 }
+    ]
+  },
+  "iron_defense": {
+    "name": "Iron Defense",
+    "description": "Raises your armor and grants a shield.",
+    "energy_cost": 15,
+    "cooldown": 3,
+    "target": "self",
+    "effects": [
+      { "type": "buff", "stat": "defense", "value": 10, "duration": 2 },
+      { "type": "shield", "value": 20 }
+    ]
+  },
+  "cleave": {
+    "name": "Cleave",
+    "description": "Deals damage to the enemy and reduces their energy.",
+    "energy_cost": 25,
+    "cooldown": 2,
+    "target": "enemy",
+    "effects": [
+      { "type": "damage", "value": 40 },
+      { "type": "drain_energy", "value": 10 }
+    ]
+  },
+  "passive": {
+    "name": "Battle Resilience",
+    "description": "Takes 10% less damage when under 50% HP.",
+    "type": "passive",
+    "trigger": "on_hit",
+    "condition": { "hp_below_percent": 50 },
+    "effects": [
+      { "type": "damage_reduction", "value": 10 }
+    ]
+  },
+  "ultimate": {
+    "name": "Colossus Strike",
+    "description": "Devastating attack that ignores armor.",
+    "energy_cost": 50,
+    "cooldown": 5,
+    "target": "enemy",
+    "effects": [
+      { "type": "damage", "value": 70, "ignore_defense": true },
+      { "type": "stun", "duration": 2 }
+    ]
+  }
+}

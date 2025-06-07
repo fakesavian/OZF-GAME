@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.glitch {
+  animation: glitch-flicker 1.5s infinite;
+}
+
+.glitch-text {
+  position: relative;
+}
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 2px;
+  text-shadow: -1px 0 red;
+  top: 0;
+  color: transparent;
+  animation: glitch-anim 1s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-flicker {
+  0%, 19%, 21%, 23%, 100% {
+    opacity: 1;
+  }
+  20%, 22% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes glitch-anim {
+  0% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-2px);
+  }
+  40% {
+    transform: translateX(2px);
+  }
+  60% {
+    transform: translateX(-1px);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Removed old .maze-control-button styles */
+
+/* CRT Arrow Button Styles */
+.ascii-arrow {
+  background: black;
+  border: 1px solid #0f0; /* green-400 equivalent */
+  color: #0f0; /* green-400 equivalent */
+  font-family: monospace;
+  font-size: 1.25rem; /* text-xl equivalent */
+  padding: 0.25rem 0.75rem; /* py-1 px-3 roughly */
+  border-radius: 0.25rem; /* rounded */
+  transition: all 0.2s;
+}
+
+.ascii-arrow:hover {
+  background: rgba(0, 255, 0, 0.2); /* hover:bg-green-900 (adjust opacity for desired effect) */
+}
