@@ -5,95 +5,123 @@ interface AsciiRendererProps {
   raycastData: RaycastHit[];
   screenWidth: number;
   screenHeight: number;
+frame: number;
 }
 
-const getWallCharacter = (distance: number, tileType: string): string => {
-  // If the ray hits a fog tile, always render it as fog, regardless of distance (unless it's very far)
-  if (tileType === '~') {
-    if (distance < 5) return '~'; // Fog is visible up to a certain distance
-    return ' '; // Beyond that, it's just empty space
+// Simplified getWallCharacter for Step 2-B: '█' for walls, '·' for floor.
+// Simplified getWallCharacter for Step 2-B: '█' for walls, '·' for floor.
+// Now expects tileType to be 'wall' or 'floor'.
+const getWallCharacter = (distance: number, tileType: 'wall' | 'floor'): string => {
+  if (tileType === 'wall') {
+    return '█';
   }
-  
-  // For other tile types, use distance-based characters
-  if (tileType === '#') { // Standard wall
-    if (distance < 1) return '█';
-    if (distance < 2) return '#';
-    if (distance < 3) return '+';
-    if (distance < 4) return '.';
-    return ' ';
-  }
-  
-  // For special interactable tiles like '*', '@', '>', '!', etc.
-  // Render them if they are close enough, otherwise they are part of the "floor" or "ceiling"
-  // or just appear as their character if very close.
-  if (tileType !== '.' && distance < 0.8) { // Very close, show actual character
-      return tileType;
-  }
-
-
-  // Default for very far objects or unhandled special tiles at distance
-  return ' '; // Open space or very far
+  // tileType === 'floor' or distance === Infinity (though Raycaster now sets tileType to 'floor' for Infinity)
+  return '·';
+};
+const shade = (dist: number): string => {
+  if     (dist < 3)  return '█';   // very near
+  else if(dist < 7)  return '▓';
+  else if(dist < 12) return '▒';
+  else if(dist < 18) return '·';   // far
+  return ' ';                      // void
 };
 
-const AsciiRenderer: React.FC<AsciiRendererProps> = ({ raycastData, screenWidth, screenHeight }) => {
-  const screenBuffer: string[][] = Array(screenHeight)
+// getCharStyle updated to primarily use 'wall' or 'floor' from RaycastHit.tileType
+// The second parameter tileTypeFromRay is now 'wall' | 'floor'.
+// If we need to style based on original map characters for special floor tiles,
+// RaycastHit would need to carry that original character, or AsciiRenderer needs access to the raw map.
+// For now, this simplification aligns with the glyph swap and 'wall'/'floor' grid.
+const getCharStyle = (charToRender: string, tileTypeFromRay: 'wall' | 'floor') => {
+  if (charToRender === '█') { // Wall character
+    return 'text-green-500'; // Style for 'wall'
+  }
+  if (charToRender === '▓') { // Shaded wall
+    return 'text-green-400';
+  }
+  if (charToRender === '▒') { // Shaded wall
+    return 'text-green-300';
+  }
+  if (charToRender === '·') { // Floor character or far wall
+    return 'text-green-200'; // Style for 'floor' / far
+  }
+  if (charToRender === ' ') { // Void or very far
+    return 'text-gray-900 text-opacity-0'; // Effectively transparent
+  }
+  if (charToRender === '-') { // Ceiling character
+    return 'text-gray-600';
+  }
+  // Fallback, though ideally all paths are covered.
+  // If tileTypeFromRay was richer (e.g. original char), we could use it here.
+  return 'text-green-400'; // Default fallback
+};
+
+const AsciiRenderer: React.FC<AsciiRendererProps> = ({ raycastData, screenWidth, screenHeight, frame }) => {
+  const screenBuffer: { char: string; style: string }[][] = Array(screenHeight)
     .fill(null)
-    .map(() => Array(screenWidth).fill(' '));
+    .map(() => Array(screenWidth).fill({ char: '·', style: getCharStyle('·', 'floor') })); // Default to floor
 
   raycastData.forEach((hit, columnIndex) => {
     if (columnIndex >= screenWidth) return;
 
-    // Use hit.tileType to determine character
-    const wallChar = getWallCharacter(hit.distance, hit.tileType);
+    // Determine character based on hit.tileType from Raycaster
+    const charToRender = hit.tileType === 'wall' ? '█' : '·';
+    
+    // Get style based on the character to render and the tileType from the raycast
+    const charStyle = getCharStyle(charToRender, hit.tileType);
+    const ceilingStyle = getCharStyle('-', 'floor'); // Ceiling is always '-', provide valid tileType
 
-    if (hit.distance === Infinity || (wallChar === ' ' && hit.tileType === '.')) { // Treat actual empty space or very far walls as floor/ceiling
+    if (hit.distance === Infinity) { // No wall hit, draw ceiling and floor
       for (let y = 0; y < screenHeight / 2; y++) {
-        screenBuffer[y][columnIndex] = '-'; // Ceiling
+        screenBuffer[y][columnIndex] = { char: '-', style: ceilingStyle };
       }
       for (let y = Math.ceil(screenHeight / 2); y < screenHeight; y++) {
-        screenBuffer[y][columnIndex] = '.'; // Floor
+        // Use '·' for floor as per new glyph requirement
+        screenBuffer[y][columnIndex] = { char: '·', style: getCharStyle('·', 'floor') };
       }
       return;
     }
     
-    // Calculate wall height based on distance
-    const perceivedWallHeight = screenHeight / (hit.distance + 0.001);
+    const perceivedWallHeight = screenHeight / (hit.distance + 0.001); // Add epsilon to avoid division by zero
     let wallTop = Math.max(0, Math.floor(screenHeight / 2 - perceivedWallHeight / 2));
     let wallBottom = Math.min(screenHeight - 1, Math.floor(screenHeight / 2 + perceivedWallHeight / 2));
 
-    // Draw ceiling
-    for (let y = 0; y < wallTop; y++) {
-      screenBuffer[y][columnIndex] = '-';
+    for (let y = 0; y < wallTop; y++) { // Ceiling
+      screenBuffer[y][columnIndex] = { char: '-', style: ceilingStyle };
     }
 
-    // Draw wall or special tile character
-    for (let y = wallTop; y <= wallBottom; y++) {
-      // If it's a special tile and close enough, it might have its own character from getWallCharacter
-      // Otherwise, for walls ('#') or fog ('~'), it uses the determined wallChar.
-      screenBuffer[y][columnIndex] = wallChar;
+    for (let y = wallTop; y <= wallBottom; y++) { // Wall
+      // Render '█' for walls, use its style.
+const wallChar = shade(hit.distance);
+      screenBuffer[y][columnIndex] = { char: wallChar, style: getCharStyle(wallChar, 'wall') };
     }
 
-    // Draw floor
-    for (let y = wallBottom + 1; y < screenHeight; y++) {
-      screenBuffer[y][columnIndex] = '.';
+    for (let y = wallBottom + 1; y < screenHeight; y++) { // Floor
+      screenBuffer[y][columnIndex] = { char: '·', style: getCharStyle('·', 'floor') };
     }
   });
+// Add crosshair
+  if (frame % 2 === 0) {
+    const midX = Math.floor(screenWidth / 2);
+    for (let y = 0; y < screenHeight; y++) {
+      if (screenBuffer[y] && screenBuffer[y][midX]) {
+        screenBuffer[y][midX] = { char: '│', style: 'text-green-400' };
+      }
+    }
+  }
 
   return (
     <div
-      style={{
-        fontFamily: '"Courier New", Courier, monospace',
-        whiteSpace: 'pre',
-        lineHeight: '1',
-        backgroundColor: '#000000',
-        color: '#00FF00', // CRT green
-        padding: '10px',
-        border: '2px solid #00FF00',
-        display: 'inline-block',
-      }}
+      className="ascii-canvas" // Apply the new CSS class
+      // Inline styles for font, whitespace, line-height, bg, padding, border are now in .ascii-canvas
+      // Keeping display: 'inline-block' here if it's specifically needed for layout around this component
+      style={{ display: 'inline-block' }}
     >
       {screenBuffer.map((row, rowIndex) => (
-        <div key={rowIndex}>{row.join('')}</div>
+        <div key={rowIndex}>
+          {row.map((cell, cellIndex) => (
+            <span key={cellIndex} className={`font-mono ${cell.style}`}>{cell.char}</span>
+          ))}
+        </div>
       ))}
     </div>
   );

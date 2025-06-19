@@ -2,7 +2,7 @@ import { MazeGridType } from './MazeData'; // Changed MazeMap to MazeGridType
 
 export interface RaycastHit {
   distance: number;
-  tileType: string; // Will store the actual character hit, e.g., '#', '.', '~', '*'
+  tileType: 'wall' | 'floor'; // Updated to reflect the new grid cell types
   hitCoordinate: { x: number; y: number };
 }
 
@@ -73,9 +73,8 @@ export function castRays(
       // Check if ray has hit a wall
       if (testX >= 0 && testX < maze[0].length && testY >= 0 && testY < maze.length) {
         const currentTile = maze[testY][testX];
-        // Consider any non-'.' tile as something that obstructs view for basic raycasting distance.
-        // Specific rendering of non-'#' tiles will be handled by AsciiRenderer.
-        if (currentTile !== '.') {
+        // A wall is hit if the current tile is 'wall'.
+        if (currentTile === 'wall') {
           hitWall = true;
         }
       } else {
@@ -94,16 +93,21 @@ export function castRays(
       // Correct for fisheye effect
       distanceToWall *= Math.cos(playerAngle - rayAngle);
       
-      // Get the actual tile character hit
-      let actualTileHit = '#'; // Default to wall if out of bounds or unexpected
-      if (testX >= 0 && testX < maze[0].length && testY >= 0 && testY < maze.length) {
-        actualTileHit = maze[testY][testX];
+      // Determine the tileType for RaycastHit
+      let hitTileType: 'wall' | 'floor' = 'floor'; // Default to floor
+      if (hitWall) { // This implies it's a 'wall' from our grid
+          // Check bounds again, though DDA should ensure testX/testY are the hit coords
+          if (testX >= 0 && testX < maze[0].length && testY >= 0 && testY < maze.length) {
+              hitTileType = maze[testY][testX]; // This should be 'wall' if hitWall is true
+          } else {
+              hitTileType = 'wall'; // Out of bounds hit is treated as a wall
+          }
       }
       
-      rays.push({ distance: distanceToWall, tileType: actualTileHit, hitCoordinate: { x: testX, y: testY } });
+      rays.push({ distance: distanceToWall, tileType: hitTileType, hitCoordinate: { x: testX, y: testY } });
     } else {
-      // If no wall is hit within max distance, it's open space.
-      rays.push({ distance: Infinity, tileType: '.', hitCoordinate: { x: -1, y: -1 } });
+      // If no wall is hit within max distance, it's open space, so 'floor'.
+      rays.push({ distance: Infinity, tileType: 'floor', hitCoordinate: { x: -1, y: -1 } });
     }
     currentAngle += angleStep;
   }

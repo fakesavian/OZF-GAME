@@ -1,50 +1,50 @@
 import { useState, useEffect, useCallback } from 'react';
+import { MazeEngine } from '../../lib/maze/MazeEngine'; // Corrected import path
 
-export interface PlayerState {
+export interface PlayerState { // This might become internal to MazeEngine or MazeFPV later
   x: number;
   y: number;
-  angle: number; // Radians
+  a: number; // Radians - changed from angle to a to match MazeEngine
 }
 
 export type MazeAction = 'forward' | 'backward' | 'turnLeft' | 'turnRight' | 'exit' | 'none';
 
 interface UseMazeControlsProps {
-  // initialPlayerState is no longer needed here as MazeFPV manages the full state
-  onAttemptMove: (action: 'forward' | 'backward') => void;
-  onTurn: (action: 'turnLeft' | 'turnRight') => void;
+  engine: MazeEngine;
   onExit?: () => void;
-  // turnSpeed and moveSpeed are managed by MazeFPV
 }
 
 const useMazeControls = ({
-  onAttemptMove,
-  onTurn,
+  engine,
   onExit,
 }: UseMazeControlsProps) => {
-  // No local player state (x, y, angle) needed in this hook anymore
   const [lastAction, setLastAction] = useState<MazeAction>('none');
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       let action: MazeAction = 'none';
-      switch (event.key) {
-        case 'ArrowUp':
+      switch (event.key.toLowerCase()) { // Convert to lowercase for case-insensitivity (W vs w)
+        case 'arrowup':
+        case 'w':
           action = 'forward';
-          onAttemptMove(action);
+          engine.move('f');
           break;
-        case 'ArrowDown':
+        case 'arrowdown':
+        case 's':
           action = 'backward';
-          onAttemptMove(action);
+          engine.move('b');
           break;
-        case 'ArrowLeft':
+        case 'arrowleft':
+        case 'a':
           action = 'turnLeft';
-          onTurn(action);
+          engine.turn('l');
           break;
-        case 'ArrowRight':
+        case 'arrowright':
+        case 'd':
           action = 'turnRight';
-          onTurn(action);
+          engine.turn('r');
           break;
-        case 'Escape':
+        case 'escape':
           action = 'exit';
           if (onExit) {
             onExit();
@@ -57,7 +57,7 @@ const useMazeControls = ({
         setLastAction(action);
       }
     },
-    [onAttemptMove, onTurn, onExit]
+    [engine, onExit] // engine is now a dependency
   );
   
   useEffect(() => {
@@ -68,7 +68,7 @@ const useMazeControls = ({
   }, [handleKeyDown]);
 
   // This hook now only reports the last keyboard action.
-  // Actual state changes (x, y, angle) are handled by MazeFPV.
+  // Engine interactions trigger events that MazeFPV listens to.
   return { lastAction };
 };
 

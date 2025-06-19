@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import MazeFPV from '../features/fpv_maze/MazeFPV';
-import { PlayerState } from '../features/fpv_maze/useMazeControls';
-import { loadMap, MazeGridType, DISTRICT_START_POSITIONS } from '../features/fpv_maze/MazeData'; // Updated imports
+import { PlayerState } from '../features/fpv_maze/useMazeControls'; // PlayerState uses 'a' for angle
+import { loadMap, DISTRICT_START_POSITIONS, loadRawCharacterMap } from '../features/fpv_maze/MazeData'; // Added loadRawCharacterMap
+import { MazeEngine } from '../lib/maze/MazeEngine'; // Import MazeEngine
 import { findLoreAtCoordinates, markLoreAsTriggered, LoreFragment, resetAllLoreEvents, loreDatabase, ArchitectComment, getArchitectComments, LoreChoice, getArchitectCommentById } from '../features/fpv_maze/LoreEvents'; // Import loreDatabase
 import LorePopup from '../features/fpv_maze/components/LorePopup';
 import MatrixRainTransition from '../features/fpv_maze/components/MatrixRainTransition';
@@ -11,22 +12,33 @@ import TypewriterText from '../components/TypewriterText'; // Corrected import p
 
 const MAZE_STORAGE_KEY = 'ozf_maze_resume_state';
 
-interface MazeResumeState extends PlayerState {
+interface MazeResumeState { // PlayerState properties will be directly on this
+  x: number;
+  y: number;
+  a: number; // Changed from angle
   collectedLoreIds: string[];
-  currentDistrictId: string; // Added currentDistrictId
+  currentDistrictId: string;
 }
 
 const StoryModeScreen: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State for current district and its map
   const [currentDistrictId, setCurrentDistrictId] = useState<string>('district0');
-  const [mazeMap, setMazeMap] = useState<MazeGridType>(() => loadMap(currentDistrictId)); // Use MazeGridType
+  
+  // Initialize MazeEngine
+  // We use a state for the engine instance itself so it can be updated if the district changes,
+  // forcing a re-creation of the engine with the new map.
+  const [engine, setEngine] = useState(() => {
+    const initialDistrict = 'district0';
+    const mapGrid = loadMap(initialDistrict);
+    const startPos = DISTRICT_START_POSITIONS[initialDistrict] || { x: 1.5, y: 1.5, a: Math.PI / 2 };
+    return new MazeEngine(mapGrid, startPos.x, startPos.y, startPos.a);
+  });
+  
+  const [rawCharacterMap, setRawCharacterMap] = useState<string[][]>(() => loadRawCharacterMap(engine.grid.length > 0 ? currentDistrictId : 'district0'));
+  const [enginePose, setEnginePose] = useState(engine.pose);
 
-  const [playerState, setPlayerState] = useState<PlayerState>(
-    () => DISTRICT_START_POSITIONS[currentDistrictId] || DISTRICT_START_POSITIONS.district0
-  );
   const [activeLore, setActiveLore] = useState<LoreFragment | null>(null);
   const [collectedLoreIds, setCollectedLoreIds] = useState<string[]>([]);
   const [triggeringBattle, setTriggeringBattle] = useState(false);
@@ -36,51 +48,92 @@ const StoryModeScreen: React.FC = () => {
   const [screenEffect, setScreenEffect] = useState<string | null>(null); // For glitch/flash
   const [isFogActive, setIsFogActive] = useState(false); // For blackout effect duration
 
+  // Effect to listen to engine pose changes for UI updates
+  useEffect(() => {
+    const handlePoseChange = (eventName: string, newPose: PlayerState) => {
+      setEnginePose({ ...newPose });
+    };
+    engine.addEventListener('posechanged', handlePoseChange);
+    return () => {
+      engine.removeEventListener('posechanged', handlePoseChange);
+    };
+  }, [engine]);
 
   const persistMazeState = useCallback(() => {
-    const stateToSave: MazeResumeState = { ...playerState, collectedLoreIds, currentDistrictId };
+    const stateToSave: MazeResumeState = { ...engine.pose, collectedLoreIds, currentDistrictId };
     localStorage.setItem(MAZE_STORAGE_KEY, JSON.stringify(stateToSave));
-  }, [playerState, collectedLoreIds, currentDistrictId]);
+  }, [engine, collectedLoreIds, currentDistrictId]);
 
   const restoreMazeState = useCallback(() => {
     const data = localStorage.getItem(MAZE_STORAGE_KEY);
     if (data) {
       try {
-        const savedState = JSON.parse(data) as MazeResumeState & { currentDistrictId?: string };
+        const savedState = JSON.parse(data) as MazeResumeState;
         const districtToLoad = savedState.currentDistrictId || 'district0';
         
         setCurrentDistrictId(districtToLoad);
-        setMazeMap(loadMap(districtToLoad));
-        setPlayerState({ x: savedState.x, y: savedState.y, angle: savedState.angle });
+        const newCollisionGrid = loadMap(districtToLoad);
+        const newRawCharMap = loadRawCharacterMap(districtToLoad);
+        setRawCharacterMap(newRawCharMap);
+        const startPos = DISTRICT_START_POSITIONS[districtToLoad] || { x: 1.5, y: 1.5, a: Math.PI / 2 };
+        
+        const poseToRestore = (districtToLoad === savedState.currentDistrictId)
+          ? { x: savedState.x, y: savedState.y, a: savedState.a }
+          : { x: startPos.x, y: startPos.y, a: startPos.a };
+
+        const newEngine = new MazeEngine(newCollisionGrid, poseToRestore.x, poseToRestore.y, poseToRestore.a);
+        setEngine(newEngine);
+        setEnginePose(newEngine.pose);
+
         setCollectedLoreIds(savedState.collectedLoreIds || []);
         (savedState.collectedLoreIds || []).forEach(id => markLoreAsTriggered(id));
       } catch (error) {
         console.error("Failed to parse saved maze state:", error);
         localStorage.removeItem(MAZE_STORAGE_KEY);
+        const initialDistrict = 'district0';
+        setCurrentDistrictId(initialDistrict);
+        const collisionGrid = loadMap(initialDistrict);
+        const rawCharMap = loadRawCharacterMap(initialDistrict);
+        setRawCharacterMap(rawCharMap);
+        const startPos = DISTRICT_START_POSITIONS[initialDistrict] || { x: 1.5, y: 1.5, a: Math.PI / 2 };
+        const freshEngine = new MazeEngine(collisionGrid, startPos.x, startPos.y, startPos.a);
+        setEngine(freshEngine);
+        setEnginePose(freshEngine.pose);
+        setCollectedLoreIds([]);
       }
     }
-  }, []);
+  }, [setEngine, setCurrentDistrictId, setCollectedLoreIds, setRawCharacterMap]);
 
   useEffect(() => {
     if (location.search.includes('fromBattle=true')) {
       restoreMazeState();
     } else {
       resetAllLoreEvents();
-      const initialDistrict = 'district0'; // Or from some game progress state
+      const initialDistrict = 'district0';
       setCurrentDistrictId(initialDistrict);
-      setMazeMap(loadMap(initialDistrict));
-      setPlayerState(DISTRICT_START_POSITIONS[initialDistrict] || DISTRICT_START_POSITIONS.district0);
+      const collisionGrid = loadMap(initialDistrict);
+      const rawCharMap = loadRawCharacterMap(initialDistrict);
+      setRawCharacterMap(rawCharMap);
+      const startPos = DISTRICT_START_POSITIONS[initialDistrict] || { x: 1.5, y: 1.5, a: Math.PI / 2 };
+      const newEngine = new MazeEngine(collisionGrid, startPos.x, startPos.y, startPos.a);
+      setEngine(newEngine);
+      setEnginePose(newEngine.pose);
       setCollectedLoreIds([]);
       localStorage.removeItem(MAZE_STORAGE_KEY);
     }
-  }, [location.search, restoreMazeState]);
+  }, [location.search, restoreMazeState, setEngine, setRawCharacterMap]);
 
   const handleChangeDistrict = (newDistrictId: string) => {
-    persistMazeState(); // Save current state before changing
+    persistMazeState();
     setCurrentDistrictId(newDistrictId);
-    setMazeMap(loadMap(newDistrictId));
-    setPlayerState(DISTRICT_START_POSITIONS[newDistrictId] || DISTRICT_START_POSITIONS.district0); // Reset to start of new district
-    
+    const newCollisionGrid = loadMap(newDistrictId);
+    const newRawCharMap = loadRawCharacterMap(newDistrictId);
+    setRawCharacterMap(newRawCharMap);
+    const startPos = DISTRICT_START_POSITIONS[newDistrictId] || { x: 1.5, y: 1.5, a: Math.PI / 2 };
+    const newEngine = new MazeEngine(newCollisionGrid, startPos.x, startPos.y, startPos.a);
+    setEngine(newEngine);
+    setEnginePose(newEngine.pose);
+        
     // Trigger 'onEnterDistrict' architect comment
     const enterComments = getArchitectComments(newDistrictId, 'onEnterDistrict');
     if (enterComments.length > 0) {
@@ -104,15 +157,17 @@ const StoryModeScreen: React.FC = () => {
   useEffect(() => {
     if (triggeringBattle || activeLore || showDistrictPrompt || architectComment) return;
 
-    const currentX = Math.floor(playerState.x);
-    const currentY = Math.floor(playerState.y);
+    // Use engine's pose for current position
+    const currentX = Math.floor(engine.pose.x);
+    const currentY = Math.floor(engine.pose.y);
 
-    if (currentY < 0 || currentY >= mazeMap.length || currentX < 0 || currentX >= mazeMap[0].length) {
+    // Use rawCharacterMap for special tile detection
+    if (currentY < 0 || currentY >= rawCharacterMap.length || currentX < 0 || currentX >= rawCharacterMap[0].length) {
       return;
     }
-    const currentTile = mazeMap[currentY][currentX];
+    const currentTileChar = rawCharacterMap[currentY][currentX];
 
-    if (currentTile === '*') {
+    if (currentTileChar === '*') {
       const foundLore = findLoreAtCoordinates(currentX, currentY);
       if (foundLore && !collectedLoreIds.includes(foundLore.id)) {
         setActiveLore(foundLore);
@@ -120,7 +175,7 @@ const StoryModeScreen: React.FC = () => {
         markLoreAsTriggered(foundLore.id);
         persistMazeState();
       }
-    } else if (currentTile === '!') {
+    } else if (currentTileChar === '!') {
       const lastBattleTile = sessionStorage.getItem('lastBattleTile');
       const currentBattleTile = `${currentDistrictId}-${currentX},${currentY}`;
       if (lastBattleTile !== currentBattleTile) {
@@ -128,52 +183,47 @@ const StoryModeScreen: React.FC = () => {
         persistMazeState();
         setTriggeringBattle(true);
       }
-    } else if (currentTile === '>') { // District Gateway
-      // Example: Assume '>' always leads to 'district1' from 'district0' for now
-      // A more robust system would have metadata in the map file or tile itself.
-      const nextDistrict = currentDistrictId === 'district0' ? 'district1' : 'district0'; // Simple toggle for demo
+    } else if (currentTileChar === '>') {
+      const nextDistrict = currentDistrictId === 'district0' ? 'district1' : 'district0';
       setTargetDistrict(nextDistrict);
       setShowDistrictPrompt(`Do you wish to enter ${nextDistrict.replace('district', 'District ')}?`);
-      // Player movement should be paused here
-    } else if (currentTile === '@') {
+    } else if (currentTileChar === '@') {
       const tileComments = getArchitectComments(currentDistrictId, 'onSpecificTile', [currentX, currentY]);
       if (tileComments.length > 0) {
-        // Simple selection: pick the first one. Could be random or more complex.
-        // Add logic here to prevent immediate re-triggering if desired (e.g., using a temporary 'triggered' state for comments)
         const alreadyTriggeredThisSession = sessionStorage.getItem(`arch_comment_${tileComments[0].id}`);
         if (!alreadyTriggeredThisSession) {
           const commentToDisplay = tileComments[0];
           setArchitectComment({ text: commentToDisplay.text, architect: commentToDisplay.architect });
           triggerScreenEffect('glitch-shift');
-          sessionStorage.setItem(`arch_comment_${tileComments[0].id}`, 'true'); // Mark as triggered for this session
+          sessionStorage.setItem(`arch_comment_${tileComments[0].id}`, 'true');
         }
       }
-    } else if (currentTile === '~') { // Fog of War / Memory Blackout tile
-      if (!isFogActive) { // Prevent re-triggering while effect is active
+    } else if (currentTileChar === '~') {
+      if (!isFogActive) {
         console.log(`Stepped on fog tile at ${currentX}, ${currentY}`);
         setIsFogActive(true);
-        triggerScreenEffect('glitch-shift'); // Or a new 'blackout' effect
+        triggerScreenEffect('glitch-shift');
 
-        // After a short delay, "clear" the fog by changing the tile on the map
-        // This makes the change persistent for the current session (until map reload)
-        // For permanent reveal, this change would need to be saved with game state.
         setTimeout(() => {
-          const newMazeMap = mazeMap.map((row, y) =>
-            row.map((cell, x) => {
-              if (x === currentX && y === currentY) {
-                return '.'; // Change fog to empty space
-              }
-              return cell;
-            })
-          );
-          setMazeMap(newMazeMap);
-          setIsFogActive(false); // Reset fog active state
-          console.log(`Fog tile at ${currentX}, ${currentY} cleared from map state.`);
-          persistMazeState(); // Persist the map change if desired, though map is usually reloaded
-        }, 1000); // Duration of the fog "event"
+          // Modify the collision grid in the engine
+          if (engine.grid[currentY] && engine.grid[currentY][currentX] !== 'wall') { // Ensure it's not a wall
+             engine.grid[currentY][currentX] = 'floor'; // Change to 'floor'
+          }
+          // Also modify the rawCharacterMap for consistent visual state if it's re-read or used by renderer directly
+          if (rawCharacterMap[currentY] && rawCharacterMap[currentY][currentX] === '~') {
+            const newRawMap = rawCharacterMap.map((row, yIdx) =>
+              yIdx === currentY ? row.map((cell, xIdx) => xIdx === currentX ? '.' : cell) : row
+            );
+            setRawCharacterMap(newRawMap);
+          }
+          setEnginePose({...engine.pose});
+          console.log(`Fog tile at ${currentX}, ${currentY} cleared.`);
+          setIsFogActive(false);
+          persistMazeState();
+        }, 1000);
       }
     }
-  }, [playerState, mazeMap, collectedLoreIds, persistMazeState, currentDistrictId, triggeringBattle, activeLore, showDistrictPrompt, architectComment, isFogActive]);
+  }, [engine, enginePose, rawCharacterMap, collectedLoreIds, persistMazeState, currentDistrictId, triggeringBattle, activeLore, showDistrictPrompt, architectComment, isFogActive, setRawCharacterMap]);
 
   const handleExitMaze = () => {
     persistMazeState();
@@ -285,9 +335,8 @@ const StoryModeScreen: React.FC = () => {
         Story Mode - {currentDistrictId.replace('district', 'District ')}
       </h1>
 
-      {!triggeringBattle && !showLoreArchive && !showDistrictPrompt && !architectComment && (
-        <MazeFPV initialPlayerState={playerState} onPlayerStateChange={setPlayerState}
-                 onExitMaze={handleExitMaze} mazeMap={mazeMap} />
+      {!triggeringBattle && !showLoreArchive && !showDistrictPrompt && !architectComment && engine && (
+        <MazeFPV engine={engine} onExitMaze={handleExitMaze} />
       )}
 
       {activeLore && !triggeringBattle && !showLoreArchive && !showDistrictPrompt && !architectComment && (

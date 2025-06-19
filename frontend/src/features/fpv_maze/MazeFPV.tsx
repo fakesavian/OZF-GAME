@@ -1,127 +1,124 @@
-import React, { useState, useEffect } from 'react'; // Removed useMemo as it's not used
-import { MazeGridType } from './MazeData'; // Changed MazeMap to MazeGridType, removed initialMaze
-import { castRays, RaycastHit } from './Raycaster';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RaycastHit } from './Raycaster'; // RaycastHit is still needed
 import AsciiRenderer from './AsciiRenderer';
-import useMazeControls, { PlayerState } from './useMazeControls';
+import useMazeControls from './useMazeControls';
+import { MazeEngine } from '../../lib/maze/MazeEngine'; // Corrected Import Path for MazeEngine
 // import { triggerLoreEvent } from './LoreEvents'; // Will be used later
 
 const SCREEN_WIDTH_CHARS = 60; // Number of columns for ASCII rendering
 const SCREEN_HEIGHT_CHARS = 24; // Number of rows for ASCII rendering
 
-interface MazeFPVProps {
-  initialPlayerState: PlayerState;
-  onPlayerStateChange: (newState: PlayerState) => void;
-  mazeMap: MazeGridType; // Changed MazeMap to MazeGridType
+// Memoize AsciiRenderer for performance
+const MemoizedAsciiRenderer = React.memo(AsciiRenderer);
+
+export interface MazeFPVProps { // Exporting for potential use elsewhere, though not strictly necessary now
+  engine: MazeEngine;
   onExitMaze?: () => void;
 }
 
 const MazeFPV: React.FC<MazeFPVProps> = ({
-  initialPlayerState,
-  onPlayerStateChange,
-  mazeMap,
+  engine,
   onExitMaze
 }) => {
-  // Player state is now managed by the parent (StoryModeScreen)
-  // We use initialPlayerState to initialize and onPlayerStateChange to update the parent
-  const [raycastData, setRaycastData] = useState<RaycastHit[]>([]);
-  // loreMessage is also managed by parent now
+  const [currentPose, setCurrentPose] = useState(engine.pose);
+  const [raycastData, setRaycastData] = useState<RaycastHit[]>(() => engine.castRays());
+  const [isColliding, setIsColliding] = useState(false);
+const [frame, setFrame] = useState(0);
+  // const [loreMessage, setLoreMessage] = useState<string | null>(null); // For later
 
-  const moveSpeed = 0.1; // Tiles per move
-  const turnSpeed = Math.PI / 30;
+  // Update local state when engine's pose changes
+  useEffect(() => {
+    const handlePoseChange = (eventName: string, newPose: any) => {
+      setCurrentPose({ ...newPose }); // Update our local copy of the pose
+      setRaycastData(engine.castRays()); // Re-cast rays
+    };
 
-  // This function now calls onPlayerStateChange to update the parent
-  const internalHandleCollisionAndMove = (newX: number, newY: number, newAngle: number) => {
-    const oldX = initialPlayerState.x; // Use current state from props
-    const oldY = initialPlayerState.y;
-    const checkX = Math.floor(newX);
-    const checkY = Math.floor(newY);
+    const handleCollision = () => {
+      setIsColliding(true);
+      const timer = setTimeout(() => setIsColliding(false), 150); // Brief flash
+      return () => clearTimeout(timer);
+    };
+    
+    // const handleLoreTrigger = (eventName: string, data: { message: string }) => {
+    //   setLoreMessage(data.message);
+    //   // Logic to show LorePopup will be handled by FPVMazeScreen or a context
+    // };
 
-    if (
-      checkX < 0 ||
-      checkX >= mazeMap[0].length ||
-      checkY < 0 ||
-      checkY >= mazeMap.length ||
-      mazeMap[checkY][checkX] === '#'
-    ) {
-      // Collision: revert x,y but keep newAngle if it was a turn
-      onPlayerStateChange({ x: oldX, y: oldY, angle: newAngle });
-    } else {
-      // No collision: update with new x,y,angle
-      onPlayerStateChange({ x: newX, y: newY, angle: newAngle });
-    }
-  };
+    engine.addEventListener('posechanged', handlePoseChange);
+    engine.addEventListener('collision', handleCollision);
+    // engine.addEventListener('loretrigger', handleLoreTrigger); // For later
 
-  const moveForward = () => {
-    const newX = initialPlayerState.x + Math.sin(initialPlayerState.angle) * moveSpeed;
-    const newY = initialPlayerState.y + Math.cos(initialPlayerState.angle) * moveSpeed;
-    internalHandleCollisionAndMove(newX, newY, initialPlayerState.angle);
-  };
+    // Initial raycast based on engine's starting pose
+    setRaycastData(engine.castRays());
+    setCurrentPose(engine.pose);
 
-  const moveBackward = () => {
-    const newX = initialPlayerState.x - Math.sin(initialPlayerState.angle) * moveSpeed;
-    const newY = initialPlayerState.y - Math.cos(initialPlayerState.angle) * moveSpeed;
-    internalHandleCollisionAndMove(newX, newY, initialPlayerState.angle);
-  };
 
-  const turnLeft = () => {
-    const newAngle = initialPlayerState.angle - turnSpeed;
-    // For turns, x and y don't change due to collision, so we can directly update.
-    onPlayerStateChange({ ...initialPlayerState, angle: newAngle });
-  };
-
-  const turnRight = () => {
-    const newAngle = initialPlayerState.angle + turnSpeed;
-    onPlayerStateChange({ ...initialPlayerState, angle: newAngle });
-  };
+    return () => {
+      engine.removeEventListener('posechanged', handlePoseChange);
+      engine.removeEventListener('collision', handleCollision);
+      // engine.removeEventListener('loretrigger', handleLoreTrigger); // For later
+    };
+  }, [engine]);
+useEffect(() => {
+    let animationFrameId: number;
+    const loop = () => {
+      setFrame(prevFrame => prevFrame + 1);
+      animationFrameId = requestAnimationFrame(loop);
+    };
+    animationFrameId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
   
-  // For on-screen buttons
-  const handleInput = (action: 'forward' | 'backward' | 'turnLeft' | 'turnRight') => {
-    if (action === 'forward') moveForward();
-    else if (action === 'backward') moveBackward();
-    else if (action === 'turnLeft') turnLeft();
-    else if (action === 'turnRight') turnRight();
-  };
+  // The handleInputAction is now managed by FPVMazeScreen and passed to ControlsBar
+  // const handleInputAction = useCallback((action: 'forward' | 'backward' | 'turnLeft' | 'turnRight') => {
+  //   if (action === 'forward') engine.move('f');
+  //   else if (action === 'backward') engine.move('b');
+  //   else if (action === 'turnLeft') engine.turn('l');
+  //   else if (action === 'turnRight') engine.turn('r');
+  // }, [engine]);
   
   const { lastAction } = useMazeControls({
-    onAttemptMove: (action) => {
-      if (action === 'forward') moveForward();
-      else if (action === 'backward') moveBackward();
-    },
-    onTurn: (action) => {
-      if (action === 'turnLeft') turnLeft();
-      else if (action === 'turnRight') turnRight();
-    },
+    engine: engine, // Pass the engine instance directly
     onExit: onExitMaze,
   });
 
-  // Re-cast rays whenever player state (from props) or maze map (from props) changes
-  useEffect(() => {
-    const newRays = castRays(initialPlayerState.x, initialPlayerState.y, initialPlayerState.angle, mazeMap);
-    setRaycastData(newRays);
-  }, [initialPlayerState, mazeMap]);
-
   return (
-    <div style={{ position: 'relative' }}>
-      <AsciiRenderer
+    <div
+      style={{ position: 'relative', width: '100%', height: '100%' }}
+      className={`maze-fpv-container ${isColliding ? 'blocked-animation' : ''}`}
+      role="application" // Added for accessibility
+      tabIndex={0} // Added to make it focusable for keyboard events
+    >
+      {/* Removed inline style for shake animation, now using .blocked-animation from index.css */}
+      
+      <MemoizedAsciiRenderer frame={frame}
         raycastData={raycastData}
         screenWidth={SCREEN_WIDTH_CHARS}
         screenHeight={SCREEN_HEIGHT_CHARS}
       />
-      <div style={{ color: '#00FF00', fontFamily: 'monospace', marginTop: '10px', textAlign: 'center' }}>
-        {/* Lore message is now handled by StoryModeScreen */}
-        <p>X: {initialPlayerState.x.toFixed(2)}, Y: {initialPlayerState.y.toFixed(2)}, Angle: {(initialPlayerState.angle * 180 / Math.PI).toFixed(2)}°</p>
-        <p>Last Key: {lastAction}</p>
+
+      {/* Player Stats Display - Positioned at the top, below the main maze title */}
+      <div
+        className="player-stats-display"
+        style={{
+          position: 'absolute',
+          top: '0px', // Adjust as needed, or remove if FPVMazeScreen handles title
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: '#00FF00',
+          fontFamily: 'monospace',
+          textAlign: 'center',
+          zIndex: 30, // Below controls if they overlap, but above renderer
+          backgroundColor: 'rgba(0,0,0,0.5)', // Optional: for readability
+          padding: '2px 5px',
+          borderRadius: '3px'
+        }}
+      >
+        <p style={{margin: 0}}>X: {currentPose.x.toFixed(2)}, Y: {currentPose.y.toFixed(2)}, Angle: {(currentPose.a * 180 / Math.PI).toFixed(2)}°</p>
+        <p style={{margin: 0}}>Last Key: {lastAction}</p>
       </div>
 
-      {/* On-Screen Controls - Repositioned and backward button added */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-40">
-        <button onClick={() => handleInput('forward')} className="ascii-arrow">↑</button>
-        <div className="flex gap-10">
-          <button onClick={() => handleInput('turnLeft')} className="ascii-arrow">←</button>
-          <button onClick={() => handleInput('backward')} className="ascii-arrow">↓</button>
-          <button onClick={() => handleInput('turnRight')} className="ascii-arrow">→</button>
-        </div>
-      </div>
+      {/* On-Screen Controls are now handled by ControlsBar.tsx, invoked in FPVMazeScreen.tsx */}
     </div>
   );
 };

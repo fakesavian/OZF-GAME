@@ -1,6 +1,36 @@
+html, body {
+  margin: 0;
+  padding: 0; /* Also good to reset padding */
+  box-sizing: border-box; /* Apply border-box to all elements for easier sizing */
+  height: 100%; /* Ensure html and body take full height */
+  width: 100%; /* Ensure html and body take full width */
+  overflow-x: hidden; /* Prevent horizontal scrollbars often caused by full-width elements */
+}
+
+/* ==========  global helpers  ========== */
+.center-screen{
+  width:100vw;
+  height:100vh;
+  display:flex;
+  justify-content:center;   /* x-axis */
+  align-items:center;        /* y-axis */
+}
+
+*, *::before, *::after {
+  box-sizing: inherit; /* Inherit box-sizing from html/body */
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* src/index.css — put after Tailwind imports */
+.fullscreen-centre {
+  position: fixed;
+  inset: 0;                       /* fill viewport */
+  display: flex;
+  align-items: center;            /* vertical */
+  justify-content: center;        /* horizontal */
+  pointer-events: none;           /* canvas keeps its own events */
+}
 
 .glitch {
   animation: glitch-flicker 1.5s infinite;
@@ -65,4 +95,57 @@
 
 .ascii-arrow:hover {
   background: rgba(0, 255, 0, 0.2); /* hover:bg-green-900 (adjust opacity for desired effect) */
+}
+
+/* Maze FPV Styles - Added based on new plan */
+
+/* From new plan - Step 1-A */
+.fpv-wrapper {
+  display: flex;
+  flex-direction: column;          /* stack title, HUD, canvas, arrows */
+  align-items: center;             /* H-centre children */
+  justify-content: flex-start;     /* Per plan, can be 'center' for vertical centering if content is short */
+  min-height: 100vh;               /* full viewport for easy centring */
+  padding-top: 2rem;               /* push a bit down from top */
+  box-sizing: border-box;          /* Ensure padding doesn't add to height */
+}
+
+/* From new plan - Step 2-A */
+.ascii-canvas { /* This class will be applied to the <pre> tag in AsciiRenderer.tsx */
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;       /* was 11px – feels fuzzy on 1080p */
+  line-height: 1;        /* tight rows */
+  color: #14ff73;        /* neon text */
+  background: #001100;   /* darker so neon pops */
+  padding: 0.5em;        /* Added some padding for aesthetics */
+  border: 1px solid #0f3d0f; /* Optional: subtle border */
+}
+
+/* From new plan - Step 4 (Bonus - Make arrow buttons larger) */
+/* This is partially handled by Tailwind in ControlsBar placeholder,
+   but adding a base style here for .ascii-arrow if used elsewhere or for non-Tailwind buttons */
+.ascii-arrow {
+  /* Default styling for ascii-arrow if not overridden by Tailwind */
+  /* Example: */
+  /* display: inline-flex; 
+  align-items: center;
+  justify-content: center;
+  font-weight: bold; */
+}
+
+/* From new plan - Step 4 (Bonus - Flash when blocked) */
+/* This will be applied to the main maze container, e.g., .fpv-wrapper or a child */
+.blocked-animation { /* Renamed from 'blocked' to avoid conflict if 'blocked' is a state class */
+  animation: redBorderGlow 0.15s linear;
+}
+
+@keyframes redBorderGlow {
+  0%, 100% {
+    outline: 2px solid transparent;
+    box-shadow: none; /* Ensure no lingering shadow */
+  }
+  50% {
+    outline: 2px solid red;
+    box-shadow: 0 0 10px red;
+  }
 }
